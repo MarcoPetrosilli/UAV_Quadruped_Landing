@@ -970,11 +970,22 @@ class BaseAviary(gym.Env):
         #           physicsClientId=self.CLIENT
         #           )
         
-        p.loadURDF("cube_no_rotation.urdf",
-                   [-.5, -2.5, .5],
-                   p.getQuaternionFromEuler([0, 0, 0]),
-                   physicsClientId=self.CLIENT
-                   )
+        
+        platform_urdf = pkg_resources.resource_filename('gym_pybullet_drones', 'assets/landing_platform.urdf')
+        
+        self.PLATFORM_ID = p.loadURDF(platform_urdf,
+                                      [3.5, 3.5, 0.15],
+                                      p.getQuaternionFromEuler([0, 0, 0]),
+                                      flags=p.URDF_USE_INERTIA_FROM_FILE,
+                                      useFixedBase=True,
+                                      physicsClientId=self.CLIENT
+                                      )
+        
+        #p.loadURDF("cube_no_rotation.urdf",
+        #           [-.5, -2.5, .5],
+        #           p.getQuaternionFromEuler([0, 0, 0]),
+        #           physicsClientId=self.CLIENT
+        #           )
         #p.loadURDF("sphere2.urdf",
         #           [0, 2, .5],
         #           p.getQuaternionFromEuler([0,0,0]),

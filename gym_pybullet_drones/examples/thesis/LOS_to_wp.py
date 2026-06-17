@@ -145,6 +145,11 @@ def run(
 ############################################################
 #### Initialize waypoints ##################################
 ############################################################
+
+    v_plat = [0.1, 0.0, 0.0] 
+    w_plat = [0.0, 0.0, 0.0]
+    
+    target_v = [0.0, 0.0, 0.0]
     
     WP_MISSION = np.array([
         starting_pos,                               # IDLE
@@ -210,9 +215,29 @@ def run(
 
         #### Step the simulation ###################################
         obs, reward, terminated, truncated, info = env.step(action)
+        
+        #### Step the landing platform #############################
+        p.resetBaseVelocity(
+            env.PLATFORM_ID, 
+            linearVelocity=v_plat, 
+            angularVelocity=w_plat, 
+            physicsClientId=PYB_CLIENT
+        )
+        
+        plat_pos, plat_quat = p.getBasePositionAndOrientation(
+            env.PLATFORM_ID, 
+            physicsClientId=PYB_CLIENT
+        )
+        
+        WP_MISSION[2] = [plat_pos[0], plat_pos[1], plat_pos[2] + 1.0]
+        
+        WP_MISSION[3] = [plat_pos[0], plat_pos[1], plat_pos[2] + 0.05] 
 
         #### Compute control for the current way point #############
         for j in range(num_drones):
+        
+            if wp_counters[j] == 3:
+            	target_v = v_plat
         	
             actual_pt = obs[j][0:3]
             
@@ -223,8 +248,10 @@ def run(
                                                                     state=obs[j],
                                                                     #target_pos=np.hstack([TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2]]),
                                                                     target_pos=p_LOS,
+                                                                    
                                                                     # target_pos=INIT_XYZS[j, :] + TARGET_POS[wp_counters[j], :],
-                                                                    target_rpy=INIT_RPYS[j, :]
+                                                                    target_rpy=INIT_RPYS[j, :],
+                                                                    target_vel=target_v
                                                                     )
                                                                     
         

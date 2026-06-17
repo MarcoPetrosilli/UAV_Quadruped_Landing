@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+<robot name="landing_platform">
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="5.0"/>
+      <inertia ixx="0.4" ixy="0" ixz="0" iyy="0.4" iyz="0" izz="0.8"/>
+    </inertial>
+    
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="1.0 1.0 0.05"/> </geometry>
+      <material name="dark_grid">
+        <color rgba="0.2 0.2 0.2 1.0"/> </material>
+    </visual>
+    
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="1.0 1.0 0.05"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
