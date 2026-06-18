@@ -51,7 +51,6 @@ V_MAX = 0.2
 
 
 
-
 def initialize_state(num_drones, states, wp_counters):   
             
     for j in range(num_drones):
@@ -60,29 +59,32 @@ def initialize_state(num_drones, states, wp_counters):
         wp_counters[j] = 1 
     return states, wp_counters
                                  
-def update_state(pos_e, num_drones, states, wp_counters, old_wp_id):
+def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
 
     for j in range(num_drones):
 
         distance = np.linalg.norm(pos_e[j])
         
-        if distance < 0.2:
+        
+        if distance < stop_delta:
             if states[j] == "rising":
                 states[j] = "nav_to_wp"
                 old_wp_id = 1
                 wp_counters[j] = 2
+                stop_delta = 0.4
             elif states[j] == "nav_to_wp":
                 states[j] = "landing"
                 old_wp_id = 2
                 wp_counters[j] = 3
+                stop_delta = 0.1
             else:
             	states[j] = "idle"
             	old_wp_id = 3
             	wp_counters[j] = 0
-    return states, wp_counters, old_wp_id
+    return states, wp_counters, old_wp_id, stop_delta
 
 
-def LOS_wp(p_actual, p_start, p_end, delta=0.4):
+def LOS_wp(p_actual, p_start, p_end, delta):
   
     p_actual = np.array(p_actual)
     p_start = np.array(p_start)
@@ -101,13 +103,15 @@ def LOS_wp(p_actual, p_start, p_end, delta=0.4):
     
     s = np.dot(v, u)
     
-
-    if (s + delta) >= path_length:
-        p_LOS = p_end
-        reached_end = True
+    if (s + delta) <= 0:
+        p_LOS = p_start
     else:
-        p_LOS = p_start + (s + delta) * u
-        reached_end = False
+        if (s + delta) >= path_length:
+            p_LOS = p_end
+            reached_end = True
+        else:
+            p_LOS = p_start + (s + delta) * u
+            reached_end = False
         
     return p_LOS, reached_end
 
@@ -161,6 +165,8 @@ def run(
     ])
     
     NUM_WP = 4
+    
+    stop_delta = 0.4 # hardcoded stop_delta = 0.1 for the landing phase
     
     wp_counters = np.array([int((i*NUM_WP/6)%NUM_WP) for i in range(num_drones)])
     
@@ -274,7 +280,7 @@ def run(
                                                                         
         
         
-        [states, wp_counters, old_wp_id] = update_state(pos_e, num_drones, states, wp_counters, old_wp_id)        
+        [states, wp_counters, old_wp_id, stop_delta] = update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta)        
            
 
                 

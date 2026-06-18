@@ -393,30 +393,23 @@ class Logger(object):
             # Traiettoria drone
             ax3d.plot(act_x, act_y, act_z, label=f"Drone {j} Trajectory", color='b', linewidth=2)
             # Traiettoria target
-            ax3d.plot(los_x, los_y, los_z, label=f"Drone {j} LOS Target Trajectory", color='r', linestyle='--', linewidth=1.5)
+            ax3d.plot(los_x, los_y, los_z, label=f"Drone {j} LOS Target Trajectory", color='g', linestyle='--', linewidth=1.5)
             
             step_size = max(1, int(len(act_x) / 50)) 
 
-            # SOSTITUISCI IL TUO CICLO FOR GRIGIO CON QUESTO:
-            # Usiamo lo slicing [::step_size] per prendere un elemento ogni N
-            ax3d.quiver(act_x[::step_size], act_y[::step_size], act_z[::step_size], # Origine: dove sta il drone
-                        los_x[::step_size] - act_x[::step_size],                    # Direzione X
-                        los_y[::step_size] - act_y[::step_size],                    # Direzione Y
-                        los_z[::step_size] - act_z[::step_size],                    # Direzione Z
-                        color='g', 
-                        alpha=0.6,               # Leggermente trasparente
-                        arrow_length_ratio=0.15, # Grandezza della punta della freccia
+
+            ax3d.quiver(act_x[::step_size], act_y[::step_size], act_z[::step_size], 
+                        los_x[::step_size] - act_x[::step_size],                    
+                        los_y[::step_size] - act_y[::step_size],                    
+                        los_z[::step_size] - act_z[::step_size],                    
+                        color='r', 
+                        alpha=0.6,               
+                        arrow_length_ratio=0.15, 
                         linewidth=1.5,
-                        label=f"Drone {j} Error Vector" if j == 0 else "" # Evita doppie legende
+                        label=f"Drone {j} Error Vector" if j == 0 else "" 
                         )
 
-            # Segmenti di errore (disegnati ogni N step per leggibilità)
-            #step_size = max(1, int(len(act_x) / 50)) # Disegna massimo 50 segmenti totali
-            #for idx in range(0, len(act_x), step_size):
-            #    ax3d.plot([act_x[idx], los_x[idx]], 
-            #              [act_y[idx], los_y[idx]], 
-            #              [act_z[idx], los_z[idx]], 
-            #              color='gray', alpha=0.3)
+      
 
         ax3d.set_xlabel('X (m)')
         ax3d.set_ylabel('Y (m)')

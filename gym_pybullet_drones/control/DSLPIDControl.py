@@ -184,14 +184,25 @@ class DSLPIDControl(BaseControl):
             The current position error.
 
         """
+        pos_ctrl_max = 0.4
+        
         cur_rotation = np.array(p.getMatrixFromQuaternion(cur_quat)).reshape(3, 3)
         pos_e = target_pos - cur_pos
+        
+        if np.linalg.norm(pos_e) > 1e-03:
+            normalized_pos_e = pos_e/np.linalg.norm(pos_e)
+        else:
+            normalized_pos_e = np.zeros(3)
+        
+        min_pos_e = min(pos_ctrl_max, np.linalg.norm(pos_e))
+        actual_pos_e = min_pos_e*normalized_pos_e
+        
         vel_e = target_vel - cur_vel
         self.integral_pos_e = self.integral_pos_e + pos_e*control_timestep
         self.integral_pos_e = np.clip(self.integral_pos_e, -2., 2.)
         self.integral_pos_e[2] = np.clip(self.integral_pos_e[2], -0.15, .15)
         #### PID target thrust #####################################
-        target_thrust = np.multiply(self.P_COEFF_FOR, pos_e) \
+        target_thrust = np.multiply(self.P_COEFF_FOR, actual_pos_e) \
                         + np.multiply(self.I_COEFF_FOR, self.integral_pos_e) \
                         + np.multiply(self.D_COEFF_FOR, vel_e) + np.array([0, 0, self.GRAVITY])
         scalar_thrust = max(0., np.dot(target_thrust, cur_rotation[:,2]))
@@ -237,6 +248,7 @@ class DSLPIDControl(BaseControl):
             (4,1)-shaped array of integers containing the RPMs to apply to each of the 4 motors.
 
         """
+        
         cur_rotation = np.array(p.getMatrixFromQuaternion(cur_quat)).reshape(3, 3)
         cur_rpy = np.array(p.getEulerFromQuaternion(cur_quat))
         target_quat = (Rotation.from_euler('XYZ', target_euler, degrees=False)).as_quat()
