@@ -47,7 +47,7 @@ DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
 
-V_MAX = 0.5
+V_MAX = 0.2
 
 
 
@@ -77,6 +77,7 @@ def update_state(pos_e, num_drones, states, wp_counters):
                 wp_counters[j] = 3
             else:
             	states[j] = "idle"
+            	wp_counters[j] = 0
     return states, wp_counters
 
 
@@ -229,19 +230,25 @@ def run(
             physicsClientId=PYB_CLIENT
         )
         
-        WP_MISSION[2] = [plat_pos[0], plat_pos[1], plat_pos[2] + 1.0]
+        #WP_MISSION[2] = [plat_pos[0], plat_pos[1], plat_pos[2] + 1.0]
         
         WP_MISSION[3] = [plat_pos[0], plat_pos[1], plat_pos[2] + 0.05] 
+         
 
         #### Compute control for the current way point #############
         for j in range(num_drones):
         
+           #if wp_counters[j] == 2 or wp_counters[j] == 3:
             if wp_counters[j] == 3:
-            	target_v = v_plat
+                target_v = v_plat
         	
             actual_pt = obs[j][0:3]
             
+            WP_MISSION[0] = actual_pt
+            
             old_wp_id = wp_counters[j]-1
+            pos_e_plot = WP_MISSION[3] - actual_pt
+            
             [p_LOS, reached_end] = LOS_wp(actual_pt, WP_MISSION[old_wp_id], WP_MISSION[wp_counters[j]], delta=0.4)
             
             action[j,:], pos_e[j,:], _ = ctrl[j].computeControlFromState(control_timestep=env.CTRL_TIMESTEP,
@@ -271,7 +278,9 @@ def run(
             logger.log(drone=j,
                        timestamp=i/env.CTRL_FREQ,
                        state=obs[j],
-                       control=np.hstack([p_LOS[0:2], INIT_XYZS[j, 2], INIT_RPYS[j, :], np.zeros(6)])
+                       control=np.hstack([p_LOS[0:2], INIT_XYZS[j, 2], INIT_RPYS[j, :], np.zeros(6)]),
+                       pos_e = pos_e_plot,
+                       p_LOS = p_LOS
                        # control=np.hstack([INIT_XYZS[j, :]+TARGET_POS[wp_counters[j], :], INIT_RPYS[j, :], np.zeros(6)])
                        )
 

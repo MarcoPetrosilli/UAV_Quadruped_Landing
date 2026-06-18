@@ -48,7 +48,7 @@ class Logger(object):
         self.counters = np.zeros(num_drones)
         self.timestamps = np.zeros((num_drones, duration_sec*self.LOGGING_FREQ_HZ))
         #### Note: this is the suggest information to log ##############################
-        self.states = np.zeros((num_drones, 16, duration_sec*self.LOGGING_FREQ_HZ)) #### 16 states: pos_x,
+        self.states = np.zeros((num_drones, 19, duration_sec*self.LOGGING_FREQ_HZ)) #### 16 states: pos_x,
                                                                                                   # pos_y,
                                                                                                   # pos_z,
                                                                                                   # vel_x,
@@ -84,7 +84,9 @@ class Logger(object):
             drone: int,
             timestamp,
             state,
-            control=np.zeros(12)
+            control=np.zeros(12),
+            pos_e=np.zeros(3),
+            p_LOS=np.zeros(3)
             ):
         """Logs entries for a single simulation step, of a single drone.
 
@@ -106,7 +108,7 @@ class Logger(object):
         #### Add rows to the matrices if a counter exceeds their size
         if current_counter >= self.timestamps.shape[1]:
             self.timestamps = np.concatenate((self.timestamps, np.zeros((self.NUM_DRONES, 1))), axis=1)
-            self.states = np.concatenate((self.states, np.zeros((self.NUM_DRONES, 16, 1))), axis=2)
+            self.states = np.concatenate((self.states, np.zeros((self.NUM_DRONES, 19, 1))), axis=2)
             self.controls = np.concatenate((self.controls, np.zeros((self.NUM_DRONES, 12, 1))), axis=2)
         #### Advance a counter is the matrices have overgrown it ###
         elif not self.PREALLOCATED_ARRAYS and self.timestamps.shape[1] > current_counter:
@@ -114,7 +116,7 @@ class Logger(object):
         #### Log the information and increase the counter ##########
         self.timestamps[drone, current_counter] = timestamp
         #### Re-order the kinematic obs (of most Aviaries) #########
-        self.states[drone, :, current_counter] = np.hstack([state[0:3], state[10:13], state[7:10], state[13:20]])
+        self.states[drone, :, current_counter] = np.hstack([state[0:3], state[10:13], state[7:10], pos_e, state[16:20], p_LOS])
         self.controls[drone, :, current_counter] = control
         self.counters[drone] = current_counter + 1
 
@@ -260,17 +262,17 @@ class Logger(object):
         for j in range(self.NUM_DRONES):
             axs[row, col].plot(t, self.states[j, 9, :], label="drone_"+str(j))
         axs[row, col].set_xlabel('time')
-        axs[row, col].set_ylabel('wx')
+        axs[row, col].set_ylabel('e_x')
         row = 7
         for j in range(self.NUM_DRONES):
             axs[row, col].plot(t, self.states[j, 10, :], label="drone_"+str(j))
         axs[row, col].set_xlabel('time')
-        axs[row, col].set_ylabel('wy')
+        axs[row, col].set_ylabel('e_y')
         row = 8
         for j in range(self.NUM_DRONES):
             axs[row, col].plot(t, self.states[j, 11, :], label="drone_"+str(j))
         axs[row, col].set_xlabel('time')
-        axs[row, col].set_ylabel('wz')
+        axs[row, col].set_ylabel('e_z')
 
         #### Time ##################################################
         row = 9
@@ -373,6 +375,55 @@ class Logger(object):
                             wspace=0.15,
                             hspace=0.0
                             )
+        #### PLOT 3D DELLA CAROTA LOS VS TRAIETTORIA REALE #########
+        fig3d = plt.figure(figsize=(10, 8))
+        ax3d = fig3d.add_subplot(111, projection='3d')
+
+        for j in range(self.NUM_DRONES):
+            # Estrai coordinate reali
+            act_x = self.states[j, 0, :]
+            act_y = self.states[j, 1, :]
+            act_z = self.states[j, 2, :]
+            
+            # Estrai coordinate carota LOS
+            los_x = self.states[j, 16, :]
+            los_y = self.states[j, 17, :]
+            los_z = self.states[j, 18, :]
+
+            # Traiettoria drone
+            ax3d.plot(act_x, act_y, act_z, label=f"Drone {j} Trajectory", color='b', linewidth=2)
+            # Traiettoria target
+            ax3d.plot(los_x, los_y, los_z, label=f"Drone {j} LOS Target Trajectory", color='r', linestyle='--', linewidth=1.5)
+            
+            step_size = max(1, int(len(act_x) / 50)) 
+
+            # SOSTITUISCI IL TUO CICLO FOR GRIGIO CON QUESTO:
+            # Usiamo lo slicing [::step_size] per prendere un elemento ogni N
+            ax3d.quiver(act_x[::step_size], act_y[::step_size], act_z[::step_size], # Origine: dove sta il drone
+                        los_x[::step_size] - act_x[::step_size],                    # Direzione X
+                        los_y[::step_size] - act_y[::step_size],                    # Direzione Y
+                        los_z[::step_size] - act_z[::step_size],                    # Direzione Z
+                        color='g', 
+                        alpha=0.6,               # Leggermente trasparente
+                        arrow_length_ratio=0.15, # Grandezza della punta della freccia
+                        linewidth=1.5,
+                        label=f"Drone {j} Error Vector" if j == 0 else "" # Evita doppie legende
+                        )
+
+            # Segmenti di errore (disegnati ogni N step per leggibilità)
+            #step_size = max(1, int(len(act_x) / 50)) # Disegna massimo 50 segmenti totali
+            #for idx in range(0, len(act_x), step_size):
+            #    ax3d.plot([act_x[idx], los_x[idx]], 
+            #              [act_y[idx], los_y[idx]], 
+            #              [act_z[idx], los_z[idx]], 
+            #              color='gray', alpha=0.3)
+
+        ax3d.set_xlabel('X (m)')
+        ax3d.set_ylabel('Y (m)')
+        ax3d.set_zlabel('Z (m)')
+        ax3d.set_title('3D Tracking: Actual Position vs LOS Target')
+        ax3d.legend()
+        ############################################################
         if self.COLAB: 
             plt.savefig(os.path.join('results', 'output_figure.png'))
         else:
