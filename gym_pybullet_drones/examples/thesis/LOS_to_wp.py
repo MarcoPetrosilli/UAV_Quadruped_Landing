@@ -52,8 +52,6 @@ V_MAX = 0.2
 
 
 
-
-
 def initialize_state(num_drones, states, wp_counters):   
             
     for j in range(num_drones):
@@ -62,7 +60,7 @@ def initialize_state(num_drones, states, wp_counters):
         wp_counters[j] = 1 
     return states, wp_counters
                                  
-def update_state(pos_e, num_drones, states, wp_counters):
+def update_state(pos_e, num_drones, states, wp_counters, old_wp_id):
 
     for j in range(num_drones):
 
@@ -71,14 +69,17 @@ def update_state(pos_e, num_drones, states, wp_counters):
         if distance < 0.2:
             if states[j] == "rising":
                 states[j] = "nav_to_wp"
+                old_wp_id = 1
                 wp_counters[j] = 2
             elif states[j] == "nav_to_wp":
                 states[j] = "landing"
+                old_wp_id = 2
                 wp_counters[j] = 3
             else:
             	states[j] = "idle"
+            	old_wp_id = 3
             	wp_counters[j] = 0
-    return states, wp_counters
+    return states, wp_counters, old_wp_id
 
 
 def LOS_wp(p_actual, p_start, p_end, delta=0.4):
@@ -163,6 +164,9 @@ def run(
     
     wp_counters = np.array([int((i*NUM_WP/6)%NUM_WP) for i in range(num_drones)])
     
+    old_wp_id = 0
+    
+    
     states = ["idle" for i in range(num_drones)]
     
     [states, wp_counters] = initialize_state(num_drones, states, wp_counters)  
@@ -238,16 +242,20 @@ def run(
         #### Compute control for the current way point #############
         for j in range(num_drones):
         
-           #if wp_counters[j] == 2 or wp_counters[j] == 3:
-            if wp_counters[j] == 3:
-                target_v = v_plat
-        	
+       	
             actual_pt = obs[j][0:3]
             
             WP_MISSION[0] = actual_pt
             
-            old_wp_id = wp_counters[j]-1
-            pos_e_plot = WP_MISSION[3] - actual_pt
+            if states[j]=="idle":  
+                pos_e_plot = np.zeros(3)
+                
+            else:
+                pos_e_plot = WP_MISSION[3] - WP_MISSION[0]
+                if wp_counters[j] == 3:
+                    target_v = v_plat
+                else:
+                    target_v = [0.0, 0.0, 0.0]
             
             [p_LOS, reached_end] = LOS_wp(actual_pt, WP_MISSION[old_wp_id], WP_MISSION[wp_counters[j]], delta=0.4)
             
@@ -260,9 +268,13 @@ def run(
                                                                     target_rpy=INIT_RPYS[j, :],
                                                                     target_vel=target_v
                                                                     )
-                                                                    
+            if old_wp_id==3 and wp_counters[j]==0:
+                action[j,:] = np.zeros(4) 
+                
+                                                                        
         
-        [states, wp_counters] = update_state(pos_e, num_drones, states, wp_counters)        
+        
+        [states, wp_counters, old_wp_id] = update_state(pos_e, num_drones, states, wp_counters, old_wp_id)        
            
 
                 
