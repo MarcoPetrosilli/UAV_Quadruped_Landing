@@ -47,8 +47,6 @@ DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
 
-V_MAX = 0.2
-
 
 
 def initialize_state(num_drones, states, wp_counters):   
@@ -71,7 +69,7 @@ def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
                 states[j] = "nav_to_wp"
                 old_wp_id = 1
                 wp_counters[j] = 2
-                stop_delta = 0.4
+                stop_delta = 0.2
             elif states[j] == "nav_to_wp":
                 states[j] = "landing"
                 old_wp_id = 2
@@ -166,7 +164,7 @@ def run(
     
     NUM_WP = 4
     
-    stop_delta = 0.4 # hardcoded stop_delta = 0.1 for the landing phase
+    stop_delta = 0.2 # hardcoded stop_delta = 0.1 for the landing phase
     
     wp_counters = np.array([int((i*NUM_WP/6)%NUM_WP) for i in range(num_drones)])
     
@@ -240,7 +238,7 @@ def run(
             physicsClientId=PYB_CLIENT
         )
         
-        #WP_MISSION[2] = [plat_pos[0], plat_pos[1], plat_pos[2] + 1.0]
+        WP_MISSION[2] = [plat_pos[0], plat_pos[1], plat_pos[2] + 1.0]
         
         WP_MISSION[3] = [plat_pos[0], plat_pos[1], plat_pos[2] + 0.05] 
          
@@ -251,19 +249,22 @@ def run(
        	
             actual_pt = obs[j][0:3]
             
-            WP_MISSION[0] = actual_pt
+            #WP_MISSION[0] = actual_pt
+            
+            WP_MISSION[0] = WP_MISSION[3]
             
             if states[j]=="idle":  
                 pos_e_plot = np.zeros(3)
                 
             else:
-                pos_e_plot = WP_MISSION[3] - WP_MISSION[0]
-                if wp_counters[j] == 3:
+                pos_e_plot = WP_MISSION[3] - actual_pt
+                
+                if wp_counters[j] == 3 or wp_counters[j] == 2:
                     target_v = v_plat
                 else:
                     target_v = [0.0, 0.0, 0.0]
             
-            [p_LOS, reached_end] = LOS_wp(actual_pt, WP_MISSION[old_wp_id], WP_MISSION[wp_counters[j]], delta=0.4)
+            [p_LOS, reached_end] = LOS_wp(actual_pt, WP_MISSION[old_wp_id], WP_MISSION[wp_counters[j]], delta=0.3)
             
             action[j,:], pos_e[j,:], _ = ctrl[j].computeControlFromState(control_timestep=env.CTRL_TIMESTEP,
                                                                     state=obs[j],

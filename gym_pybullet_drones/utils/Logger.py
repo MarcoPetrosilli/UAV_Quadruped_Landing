@@ -378,6 +378,9 @@ class Logger(object):
         #### PLOT 3D DELLA CAROTA LOS VS TRAIETTORIA REALE #########
         fig3d = plt.figure(figsize=(10, 8))
         ax3d = fig3d.add_subplot(111, projection='3d')
+        
+        fig2d = plt.figure(figsize=(10, 8))
+        ax2d = fig2d.add_subplot(111)
 
         for j in range(self.NUM_DRONES):
             # Estrai coordinate reali
@@ -408,7 +411,19 @@ class Logger(object):
                         linewidth=1.5,
                         label=f"Drone {j} Error Vector" if j == 0 else "" 
                         )
-
+                        
+            ax2d.plot(act_x, act_y, label=f"Drone {j} Trajectory", color='b', linewidth=2)
+            ax2d.plot(los_x, los_y, label=f"Drone {j} LOS Target Trajectory", color='g', linestyle='--', linewidth=1.5)
+            
+            ax2d.quiver(act_x[::step_size], act_y[::step_size], 
+                        los_x[::step_size] - act_x[::step_size],                    
+                        los_y[::step_size] - act_y[::step_size], 
+                        angles='xy', scale_units='xy', scale=1,
+                        color='r', 
+                        alpha=0.6,               
+                        width=0.003,
+                        label=f"Drone {j} Error Vector" if j == 0 else "" 
+                        )
       
 
         ax3d.set_xlabel('X (m)')
@@ -416,6 +431,13 @@ class Logger(object):
         ax3d.set_zlabel('Z (m)')
         ax3d.set_title('3D Tracking: Actual Position vs LOS Target')
         ax3d.legend()
+        
+        ax2d.set_xlabel('X (m)')
+        ax2d.set_ylabel('Y (m)')
+        ax2d.set_title('2D Top-Down View: XY Tracking')
+        ax2d.grid(True)
+        ax2d.axis('equal')
+        ax2d.legend()
         ############################################################
         if self.COLAB: 
             plt.savefig(os.path.join('results', 'output_figure.png'))
