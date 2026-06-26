@@ -119,7 +119,7 @@ class MPCPIDControl(BaseControl):
         u = cp.Variable((2, self.N))
         cost = 0
        
-        Q = np.diag([20.0, 20, 5.0, 5.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
+        Q = np.diag([25.0, 25.0, 4.0, 4.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
         R = np.diag([1.0, 1.0])
         
         constraints = [x[:, 0] == [cur_x, cur_y, cur_vx, cur_vy]]
@@ -127,7 +127,7 @@ class MPCPIDControl(BaseControl):
             cost += cp.quad_form(x[:, k] - [target_pos[k][0], target_pos[k][1], 0, 0], Q)
             cost += cp.quad_form(u[:, k], R)
             constraints += [x[:, k+1] == self.A_hrz @ x[:, k] + self.B_hrz @ u[:, k]]
-            constraints += [cp.abs(u[:, k]) <= 0.17] # Limite angoli/ax, ay
+            constraints += [cp.abs(u[:, k]) <= 0.087] # Limite angoli/ax, ay
         prob = cp.Problem(cp.Minimize(cost), constraints)
         prob.solve(solver=cp.OSQP, warm_start=True)
         return u[:, 0].value # [phi, theta]
@@ -136,7 +136,7 @@ class MPCPIDControl(BaseControl):
         x = cp.Variable((2, self.N + 1))
         u = cp.Variable((1, self.N))
         
-        Q = np.diag([20.0, 3.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
+        Q = np.diag([20.0, 5.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
         R = np.diag([1.0])
         
         cost = 0
@@ -145,7 +145,7 @@ class MPCPIDControl(BaseControl):
             cost += cp.quad_form(x[:, k] - [target_pos[k][2], 0], Q)
             cost += cp.quad_form(u[:, k], R)
             constraints += [x[:, k+1] == self.A_vrt @ x[:, k] + self.B_vrt @ u[:, k]]
-            constraints += [cp.abs(u[:, k]) <= 6.0] # Limite az
+            #constraints += [cp.abs(u[:, k]) <= 6.0] # Limite az
         prob = cp.Problem(cp.Minimize(cost), constraints)
         prob.solve(solver=cp.OSQP, warm_start=True)
         return u[:, 0].value[0] # az

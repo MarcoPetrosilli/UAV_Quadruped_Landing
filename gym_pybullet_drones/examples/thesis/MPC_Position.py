@@ -267,7 +267,7 @@ def run(
                 else:
                     target_v = [0.0, 0.0, 0.0]
             
-            [p_LOS, reached_end] = LOS_wp(actual_pt, WP_MISSION[old_wp_id], WP_MISSION[wp_counters[j]], delta=0.3, N=20)
+            [p_LOS, reached_end] = LOS_wp(actual_pt, WP_MISSION[old_wp_id], WP_MISSION[wp_counters[j]], delta=0.1, N=20)
             
             action[j,:], _, _ = ctrl[j].computeControlFromState(control_timestep=env.CTRL_TIMESTEP,
                                                                     state=obs[j],
