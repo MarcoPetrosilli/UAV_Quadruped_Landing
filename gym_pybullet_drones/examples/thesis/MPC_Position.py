@@ -262,10 +262,15 @@ def run(
             else:
                 pos_e_plot = WP_MISSION[3] - actual_pt
                 
-                if wp_counters[j] == 3 or wp_counters[j] == 2:
+                if wp_counters[j] == 2:  
                     target_v = v_plat
+                    a_xy = 0.087
+                elif wp_counters[j] == 3:
+                    target_v = v_plat
+                    a_xy = 0.044
                 else:
                     target_v = [0.0, 0.0, 0.0]
+                    a_xy = 0.087
             
             [p_LOS, reached_end] = LOS_wp(actual_pt, WP_MISSION[old_wp_id], WP_MISSION[wp_counters[j]], delta=0.1, N=20)
             
@@ -276,7 +281,9 @@ def run(
                                                                     
                                                                     # target_pos=INIT_XYZS[j, :] + TARGET_POS[wp_counters[j], :],
                                                                     target_rpy=INIT_RPYS[j, :],
-                                                                    target_vel=target_v
+                                                                    target_vel=target_v,
+                                                                    target_rpy_rates=np.zeros(3),
+                                                                    a_xy_lim=a_xy
                                                                     )
             pos_e[j] = WP_MISSION[wp_counters[j]] - obs[j][0:3]
             if old_wp_id==3 and wp_counters[j]==0:

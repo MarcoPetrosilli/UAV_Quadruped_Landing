@@ -48,7 +48,8 @@ class MPCPIDControl(BaseControl):
                        target_pos,
                        target_rpy=np.zeros(3),
                        target_vel=np.zeros(3),
-                       target_rpy_rates=np.zeros(3)
+                       target_rpy_rates=np.zeros(3),
+                       a_xy_lim = 0.043
                        ):
         """Computes the PID control action (as RPMs) for a single drone.
 
@@ -92,7 +93,7 @@ class MPCPIDControl(BaseControl):
         # Calcoliamo l'MPC solo ogni 12 step (es. 20 volte al secondo)
         if self.control_counter % self.MPC_FREQ_DIVIDER == 0 or self.control_counter == 1:
             thrust, computed_target_rpy, pos_e = self._dslMPCPositionControl(
-                control_timestep, cur_pos, cur_quat, cur_vel, target_pos, target_rpy, target_vel
+                control_timestep, cur_pos, cur_quat, cur_vel, target_pos, target_rpy, target_vel, a_xy_lim
             )
             # Salviamo i risultati per i frame successivi
             self.last_mpc_thrust = thrust
@@ -114,12 +115,12 @@ class MPCPIDControl(BaseControl):
         cur_rpy = p.getEulerFromQuaternion(cur_quat)
         return rpm, pos_e, computed_target_rpy[2] - cur_rpy[2]
         
-    def _mpc_horizontal(self, cur_x, cur_y, cur_vx, cur_vy, target_pos):
+    def _mpc_horizontal(self, cur_x, cur_y, cur_vx, cur_vy, target_pos, a_xy_lim):
         x = cp.Variable((4, self.N + 1))
         u = cp.Variable((2, self.N))
         cost = 0
        
-        Q = np.diag([25.0, 25.0, 4.0, 4.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
+        Q = np.diag([24.0, 24.0, 6.0, 6.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
         R = np.diag([1.0, 1.0])
         
         constraints = [x[:, 0] == [cur_x, cur_y, cur_vx, cur_vy]]
@@ -127,7 +128,9 @@ class MPCPIDControl(BaseControl):
             cost += cp.quad_form(x[:, k] - [target_pos[k][0], target_pos[k][1], 0, 0], Q)
             cost += cp.quad_form(u[:, k], R)
             constraints += [x[:, k+1] == self.A_hrz @ x[:, k] + self.B_hrz @ u[:, k]]
-            constraints += [cp.abs(u[:, k]) <= 0.087] # Limite angoli/ax, ay
+            #constraints += [cp.abs(u[:, k]) <= 0.044]
+            #constraints += [cp.abs(u[:, k]) <= 0.087]
+            constraints += [cp.abs(u[:, k]) <= a_xy_lim]
         prob = cp.Problem(cp.Minimize(cost), constraints)
         prob.solve(solver=cp.OSQP, warm_start=True)
         return u[:, 0].value # [phi, theta]
@@ -150,13 +153,13 @@ class MPCPIDControl(BaseControl):
         prob.solve(solver=cp.OSQP, warm_start=True)
         return u[:, 0].value[0] # az
 
-    def _dslMPCPositionControl(self, control_timestep, cur_pos, cur_quat, cur_vel, target_pos, target_rpy, target_vel):
+    def _dslMPCPositionControl(self, control_timestep, cur_pos, cur_quat, cur_vel, target_pos, target_rpy, target_vel, a_xy_lim):
         # 1. Estrarre stati
         cur_x, cur_y, cur_z = cur_pos
         vx, vy, vz = cur_vel
         
         # 2. Ottenere comandi MPC (garantiamo che siano float scalari con .item())
-        res_hrz = self._mpc_horizontal(cur_x, cur_y, vx, vy, target_pos)
+        res_hrz = self._mpc_horizontal(cur_x, cur_y, vx, vy, target_pos, a_xy_lim)
         phi_cmd = float(res_hrz[0])
         theta_cmd = float(res_hrz[1])
         
