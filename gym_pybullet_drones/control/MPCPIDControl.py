@@ -37,7 +37,7 @@ class MPCPIDControl(BaseControl):
         
         self.last_mpc_thrust = 0.0
         self.last_mpc_euler = np.zeros(3)
-        self.MPC_FREQ_DIVIDER = 24 # Se Pybullet va a 240Hz, 240/12 = 20Hz per l'MPC
+        self.MPC_FREQ_DIVIDER = 12 # Se Pybullet va a 240Hz, 240/12 = 20Hz per l'MPC
     
     def computeControl(self,
                        control_timestep,
@@ -120,7 +120,7 @@ class MPCPIDControl(BaseControl):
         u = cp.Variable((2, self.N))
         cost = 0
        
-        Q = np.diag([24.0, 24.0, 6.0, 6.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
+        Q = np.diag([26.0, 26.0, 6.0, 6.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
         R = np.diag([1.0, 1.0])
         
         constraints = [x[:, 0] == [cur_x, cur_y, cur_vx, cur_vy]]

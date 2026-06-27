@@ -153,7 +153,7 @@ def run(
 #### Initialize waypoints ##################################
 ############################################################
 
-    v_plat = [0.0, 0.0, 0.0] 
+    v_plat = [0.1, 0.0, 0.0] 
     w_plat = [0.0, 0.0, 0.0]
     
     target_v = [0.0, 0.0, 0.0]
@@ -241,7 +241,7 @@ def run(
             physicsClientId=PYB_CLIENT
         )
         
-        WP_MISSION[2] = [plat_pos[0], plat_pos[1], plat_pos[2] + 1.0]
+        #WP_MISSION[2] = [plat_pos[0], plat_pos[1], plat_pos[2] + 1.0]
         
         WP_MISSION[3] = [plat_pos[0], plat_pos[1], plat_pos[2] + 0.05] 
          
@@ -263,14 +263,14 @@ def run(
                 pos_e_plot = WP_MISSION[3] - actual_pt
                 
                 if wp_counters[j] == 2:  
-                    target_v = v_plat
+                    target_v = [0.0, 0.0, 0.0]
                     a_xy = 0.087
                 elif wp_counters[j] == 3:
                     target_v = v_plat
-                    a_xy = 0.044
+                    a_xy = 0.06
                 else:
                     target_v = [0.0, 0.0, 0.0]
-                    a_xy = 0.087
+                    a_xy = 0.1
             
             [p_LOS, reached_end] = LOS_wp(actual_pt, WP_MISSION[old_wp_id], WP_MISSION[wp_counters[j]], delta=0.1, N=20)
             
