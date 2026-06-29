@@ -57,7 +57,7 @@ class BaseControl(object):
                                 state,
                                 target_pos,
                                 target_rpy=np.zeros(3),
-                                target_vel=np.zeros(3),
+                                target_vel=np.zeros((20,3)),
                                 target_rpy_rates=np.zeros(3),
                                 a_xy_lim = 0.043
                                 ):
@@ -104,7 +104,7 @@ class BaseControl(object):
                        cur_ang_vel,
                        target_pos,
                        target_rpy=np.zeros(3),
-                       target_vel=np.zeros(3),
+                       target_vel=np.zeros((20,3)),
                        target_rpy_rates=np.zeros(3)
                        ):
         """Abstract method to compute the control action for a single drone.

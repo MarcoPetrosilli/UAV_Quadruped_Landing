@@ -42,7 +42,7 @@ DEFAULT_USER_DEBUG_GUI = False
 DEFAULT_OBSTACLES = True
 DEFAULT_SIMULATION_FREQ_HZ = 240
 DEFAULT_CONTROL_FREQ_HZ = 48
-DEFAULT_DURATION_SEC = 15
+DEFAULT_DURATION_SEC = 20
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
@@ -83,6 +83,8 @@ def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
 
 
 def LOS_wp(p_actual, p_start, p_end, delta, N):
+
+    v_max = 1.0 #1 m/s max
     p_actual = np.array(p_actual)
     p_start = np.array(p_start)
     p_end = np.array(p_end)
@@ -92,29 +94,38 @@ def LOS_wp(p_actual, p_start, p_end, delta, N):
 
     if path_length < 1e-6:
         p_LOS = [p_end for _ in range(N)]
-        return p_LOS, True
+        v_LOS = [np.zeros(3) for _ in range(N)]
+        return p_LOS, v_LOS, True
 
     u = path_vector / path_length
 
     p_LOS = []
+    v_LOS = []
+    
     reached_end = False
 
     v = p_actual - p_start
-    s = np.dot(v, u)  # ✅ proiezione calcolata UNA volta, fuori dal loop
+    s = np.dot(v, u) 
+    
 
     for i in range(N):
         s_lookahead = s + delta * (i + 1)  # ogni punto guarda più avanti
 
         if s_lookahead <= 0:
             p_LOS.append(p_start.copy())
+            v_LOS.append(np.zeros(3)) # see better the v in this case, should have a sense
         elif s_lookahead >= path_length:
             p_LOS.append(p_end.copy())
+            v_LOS.append(np.zeros(3))
             reached_end = True
         else:
-            p_LOS.append(p_start + s_lookahead * u)  # ✅ formula corretta
+            p_LOS.append(p_start + s_lookahead * u)  
+            v_k = min(v_max, 1.0*np.linalg.norm(p_end-s_lookahead*u))
+            v_LOS.append(v_k*u)
             reached_end = False
+            
 
-    return p_LOS, reached_end
+    return p_LOS, v_LOS, reached_end
 
 ############################################################
 #### RUN Function ##########################################
@@ -153,7 +164,7 @@ def run(
 #### Initialize waypoints ##################################
 ############################################################
 
-    v_plat = [0.1, 0.0, 0.0] 
+    v_plat = [0.0, 0.0, 0.0] 
     w_plat = [0.0, 0.0, 0.0]
     
     target_v = [0.0, 0.0, 0.0]
@@ -264,15 +275,15 @@ def run(
                 
                 if wp_counters[j] == 2:  
                     target_v = [0.0, 0.0, 0.0]
-                    a_xy = 0.087
+                    a_xy = 0.17
                 elif wp_counters[j] == 3:
                     target_v = v_plat
-                    a_xy = 0.06
+                    a_xy = 0.05
                 else:
                     target_v = [0.0, 0.0, 0.0]
-                    a_xy = 0.1
+                    a_xy = 0.17
             
-            [p_LOS, reached_end] = LOS_wp(actual_pt, WP_MISSION[old_wp_id], WP_MISSION[wp_counters[j]], delta=0.1, N=20)
+            [p_LOS, v_LOS, reached_end] = LOS_wp(actual_pt, WP_MISSION[old_wp_id], WP_MISSION[wp_counters[j]], delta=0.02, N=20)
             
             action[j,:], _, _ = ctrl[j].computeControlFromState(control_timestep=env.CTRL_TIMESTEP,
                                                                     state=obs[j],
@@ -281,7 +292,7 @@ def run(
                                                                     
                                                                     # target_pos=INIT_XYZS[j, :] + TARGET_POS[wp_counters[j], :],
                                                                     target_rpy=INIT_RPYS[j, :],
-                                                                    target_vel=target_v,
+                                                                    target_vel=v_LOS,
                                                                     target_rpy_rates=np.zeros(3),
                                                                     a_xy_lim=a_xy
                                                                     )

@@ -10,7 +10,7 @@ class MPCPIDControl(BaseControl):
     def __init__(self, drone_model: DroneModel, g: float=9.8, dt=0.02):
         super().__init__(drone_model=drone_model, g=g)
         self.dt = dt
-        self.N = 20  # Orizzonte ridotto per mantenere i 240Hz
+        self.N = 20  
         
         # Inizializza matrici modello [cite: 1121-1125]
         self.A_hrz = np.array([[1, 0, dt, 0], [0, 1, 0, dt], [0, 0, 1, 0], [0, 0, 0, 1]])
@@ -37,7 +37,7 @@ class MPCPIDControl(BaseControl):
         
         self.last_mpc_thrust = 0.0
         self.last_mpc_euler = np.zeros(3)
-        self.MPC_FREQ_DIVIDER = 12 # Se Pybullet va a 240Hz, 240/12 = 20Hz per l'MPC
+        self.MPC_FREQ_DIVIDER = 8 # Se Pybullet va a 240Hz, 240/12 = 20Hz per l'MPC
     
     def computeControl(self,
                        control_timestep,
@@ -47,7 +47,7 @@ class MPCPIDControl(BaseControl):
                        cur_ang_vel,
                        target_pos,
                        target_rpy=np.zeros(3),
-                       target_vel=np.zeros(3),
+                       target_vel=np.zeros((20,3)),
                        target_rpy_rates=np.zeros(3),
                        a_xy_lim = 0.043
                        ):
@@ -115,17 +115,17 @@ class MPCPIDControl(BaseControl):
         cur_rpy = p.getEulerFromQuaternion(cur_quat)
         return rpm, pos_e, computed_target_rpy[2] - cur_rpy[2]
         
-    def _mpc_horizontal(self, cur_x, cur_y, cur_vx, cur_vy, target_pos, a_xy_lim):
+    def _mpc_horizontal(self, cur_x, cur_y, cur_vx, cur_vy, target_pos, target_vel, a_xy_lim):
         x = cp.Variable((4, self.N + 1))
         u = cp.Variable((2, self.N))
         cost = 0
        
-        Q = np.diag([26.0, 26.0, 6.0, 6.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
-        R = np.diag([1.0, 1.0])
+        Q = np.diag([25.0, 25.0, 5.0, 5.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
+        R = np.diag([10.0, 10.0])
         
         constraints = [x[:, 0] == [cur_x, cur_y, cur_vx, cur_vy]]
         for k in range(self.N):
-            cost += cp.quad_form(x[:, k] - [target_pos[k][0], target_pos[k][1], 0, 0], Q)
+            cost += cp.quad_form(x[:, k] - [target_pos[k][0], target_pos[k][1], target_vel[k][0], target_vel[k][1]], Q)
             cost += cp.quad_form(u[:, k], R)
             constraints += [x[:, k+1] == self.A_hrz @ x[:, k] + self.B_hrz @ u[:, k]]
             #constraints += [cp.abs(u[:, k]) <= 0.044]
@@ -135,17 +135,17 @@ class MPCPIDControl(BaseControl):
         prob.solve(solver=cp.OSQP, warm_start=True)
         return u[:, 0].value # [phi, theta]
 
-    def _mpc_vertical(self, cur_z, cur_vz, target_pos):
+    def _mpc_vertical(self, cur_z, cur_vz, target_pos, target_vel):
         x = cp.Variable((2, self.N + 1))
         u = cp.Variable((1, self.N))
         
-        Q = np.diag([20.0, 5.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
-        R = np.diag([1.0])
+        Q = np.diag([25.0, 5.0])
+        R = np.diag([10.0])
         
         cost = 0
         constraints = [x[:, 0] == [cur_z, cur_vz]]
         for k in range(self.N):
-            cost += cp.quad_form(x[:, k] - [target_pos[k][2], 0], Q)
+            cost += cp.quad_form(x[:, k] - [target_pos[k][2], target_vel[k][2]], Q)
             cost += cp.quad_form(u[:, k], R)
             constraints += [x[:, k+1] == self.A_vrt @ x[:, k] + self.B_vrt @ u[:, k]]
             #constraints += [cp.abs(u[:, k]) <= 6.0] # Limite az
@@ -159,11 +159,11 @@ class MPCPIDControl(BaseControl):
         vx, vy, vz = cur_vel
         
         # 2. Ottenere comandi MPC (garantiamo che siano float scalari con .item())
-        res_hrz = self._mpc_horizontal(cur_x, cur_y, vx, vy, target_pos, a_xy_lim)
+        res_hrz = self._mpc_horizontal(cur_x, cur_y, vx, vy, target_pos, target_vel, a_xy_lim)
         phi_cmd = float(res_hrz[0])
         theta_cmd = float(res_hrz[1])
         
-        az = float(self._mpc_vertical(cur_z, vz, target_pos))
+        az = float(self._mpc_vertical(cur_z, vz, target_pos, target_vel))
         
         # 3. Termine di accoppiamento (Calcolo sicuro con scalari)
         # Nota: tan e arctan su float puri non creano array NumPy
