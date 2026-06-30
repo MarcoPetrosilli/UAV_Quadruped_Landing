@@ -42,7 +42,7 @@ DEFAULT_USER_DEBUG_GUI = False
 DEFAULT_OBSTACLES = True
 DEFAULT_SIMULATION_FREQ_HZ = 240
 DEFAULT_CONTROL_FREQ_HZ = 48
-DEFAULT_DURATION_SEC = 20
+DEFAULT_DURATION_SEC = 30
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
@@ -119,8 +119,16 @@ def LOS_wp(p_actual, p_start, p_end, delta, N):
             v_LOS.append(np.zeros(3))
             reached_end = True
         else:
-            p_LOS.append(p_start + s_lookahead * u)  
-            v_k = min(v_max, 1.0*np.linalg.norm(p_end-s_lookahead*u))
+            p_LOS_k = p_start + s_lookahead * u
+            p_LOS.append(p_LOS_k)  
+            if s_lookahead < path_length/2:
+            	v_k_candidate = 0.5*s_lookahead
+            else:
+                v_k_candidate = 0.5*(path_length-s_lookahead)
+            v_k = min(v_max, v_k_candidate)
+            	
+            #v_k = min(v_max, 1.0*np.linalg.norm(p_end-p_LOS_k))
+            
             v_LOS.append(v_k*u)
             reached_end = False
             
@@ -265,7 +273,7 @@ def run(
             
             #WP_MISSION[0] = actual_pt
             
-            WP_MISSION[0] = WP_MISSION[3]
+            #WP_MISSION[0] = WP_MISSION[3]
             
             if states[j]=="idle":  
                 pos_e_plot = np.zeros(3)
@@ -278,7 +286,7 @@ def run(
                     a_xy = 0.17
                 elif wp_counters[j] == 3:
                     target_v = v_plat
-                    a_xy = 0.05
+                    a_xy = 0.07
                 else:
                     target_v = [0.0, 0.0, 0.0]
                     a_xy = 0.17
@@ -298,6 +306,7 @@ def run(
                                                                     )
             pos_e[j] = WP_MISSION[wp_counters[j]] - obs[j][0:3]
             if old_wp_id==3 and wp_counters[j]==0:
+                WP_MISSION[0] = WP_MISSION[3]
                 action[j,:] = np.zeros(4) 
                 
                                                                         
@@ -322,8 +331,9 @@ def run(
                        #control=np.hstack([WP_MISSION[wp_counters[j],0:2], INIT_XYZS[j, 2], INIT_RPYS[j, :], np.zeros(6)]),
                        control=np.hstack([p_LOS[0][0:2], INIT_XYZS[j, 2], INIT_RPYS[j, :], np.zeros(6)]),
                        pos_e = pos_e_plot,
-                       p_LOS = p_LOS[0][:]
+                       p_LOS = p_LOS[0][:],
                        # control=np.hstack([INIT_XYZS[j, :]+TARGET_POS[wp_counters[j], :], INIT_RPYS[j, :], np.zeros(6)])
+                       v_LOS = v_LOS[0][:]
                        )
 
         #### Printout ##############################################

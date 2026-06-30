@@ -86,7 +86,8 @@ class Logger(object):
             state,
             control=np.zeros(12),
             pos_e=np.zeros(3),
-            p_LOS=np.zeros(3)
+            p_LOS=np.zeros(3),
+            v_LOS=np.zeros(3)
             ):
         """Logs entries for a single simulation step, of a single drone.
 
@@ -116,7 +117,7 @@ class Logger(object):
         #### Log the information and increase the counter ##########
         self.timestamps[drone, current_counter] = timestamp
         #### Re-order the kinematic obs (of most Aviaries) #########
-        self.states[drone, :, current_counter] = np.hstack([state[0:3], state[10:13], state[7:10], pos_e, state[16:20], p_LOS])
+        self.states[drone, :, current_counter] = np.hstack([state[0:3], state[10:13], v_LOS, pos_e, state[16:20], p_LOS])
         self.controls[drone, :, current_counter] = control
         self.counters[drone] = current_counter + 1
 
@@ -245,17 +246,17 @@ class Logger(object):
         for j in range(self.NUM_DRONES):
             axs[row, col].plot(t, self.states[j, 6, :], label="drone_"+str(j))
         axs[row, col].set_xlabel('time')
-        axs[row, col].set_ylabel('r (rad)')
+        axs[row, col].set_ylabel('v_LOS_x')
         row = 4
         for j in range(self.NUM_DRONES):
             axs[row, col].plot(t, self.states[j, 7, :], label="drone_"+str(j))
         axs[row, col].set_xlabel('time')
-        axs[row, col].set_ylabel('p (rad)')
+        axs[row, col].set_ylabel('v_LOS_y')
         row = 5
         for j in range(self.NUM_DRONES):
             axs[row, col].plot(t, self.states[j, 8, :], label="drone_"+str(j))
         axs[row, col].set_xlabel('time')
-        axs[row, col].set_ylabel('y (rad)')
+        axs[row, col].set_ylabel('v_LOS_z')
 
         #### Ang Vel ###############################################
         row = 6

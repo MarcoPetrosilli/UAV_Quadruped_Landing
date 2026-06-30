@@ -120,8 +120,8 @@ class MPCPIDControl(BaseControl):
         u = cp.Variable((2, self.N))
         cost = 0
        
-        Q = np.diag([25.0, 25.0, 5.0, 5.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
-        R = np.diag([10.0, 10.0])
+        Q = np.diag([20.0, 20.0, 15.0, 15.0]) # Penalizza molto l'errore di posizione, meno quello di velocità
+        R = np.diag([5.0, 5.0])
         
         constraints = [x[:, 0] == [cur_x, cur_y, cur_vx, cur_vy]]
         for k in range(self.N):
@@ -139,8 +139,8 @@ class MPCPIDControl(BaseControl):
         x = cp.Variable((2, self.N + 1))
         u = cp.Variable((1, self.N))
         
-        Q = np.diag([25.0, 5.0])
-        R = np.diag([10.0])
+        Q = np.diag([20.0, 15.0])
+        R = np.diag([5.0])
         
         cost = 0
         constraints = [x[:, 0] == [cur_z, cur_vz]]
