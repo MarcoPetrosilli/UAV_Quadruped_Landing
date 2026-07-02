@@ -103,6 +103,7 @@ def LOS_wp(p_actual, p_start, p_end, delta):
     
     if (s + delta) <= 0:
         p_LOS = p_start
+        reached_end = False
     else:
         if (s + delta) >= path_length:
             p_LOS = p_end
@@ -238,7 +239,7 @@ def run(
             physicsClientId=PYB_CLIENT
         )
         
-        WP_MISSION[2] = [plat_pos[0], plat_pos[1], plat_pos[2] + 1.0]
+        #WP_MISSION[2] = [plat_pos[0], plat_pos[1], plat_pos[2] + 1.0]
         
         WP_MISSION[3] = [plat_pos[0], plat_pos[1], plat_pos[2] + 0.05] 
          
@@ -251,7 +252,7 @@ def run(
             
             #WP_MISSION[0] = actual_pt
             
-            WP_MISSION[0] = WP_MISSION[3]
+            
             
             if states[j]=="idle":  
                 pos_e_plot = np.zeros(3)
@@ -259,7 +260,7 @@ def run(
             else:
                 pos_e_plot = WP_MISSION[3] - actual_pt
                 
-                if wp_counters[j] == 3 or wp_counters[j] == 2:
+                if wp_counters[j] == 3:
                     target_v = v_plat
                 else:
                     target_v = [0.0, 0.0, 0.0]
@@ -276,6 +277,7 @@ def run(
                                                                     target_vel=target_v
                                                                     )
             if old_wp_id==3 and wp_counters[j]==0:
+                WP_MISSION[0] = WP_MISSION[3]
                 action[j,:] = np.zeros(4) 
                 
                                                                         
