@@ -28,7 +28,7 @@ class MPCPIDHYControl(BaseControl):
     def __init__(self, drone_model: DroneModel, g: float = 9.8, dt=0.02):
         super().__init__(drone_model=drone_model, g=g)
         self.dt = dt
-        self.N = 20
+        self.N = 40
 
         # ---- MPC prediction models -----------------------------------------
         self.A_hrz = np.array([[1, 0, dt, 0],
@@ -67,14 +67,14 @@ class MPCPIDHYControl(BaseControl):
         self.D_COEFF_TOR = np.array([20000., 20000., 12000.])
 
         # ---- MPC weights (position error, zero velocity ref) ---------------
-        self.Q_hrz = np.diag([20.0, 20.0, 5.0, 5.0])
-        self.R_hrz = np.diag([5.0, 5.0])
-        self.Q_vrt = np.diag([20.0, 5.0])
-        self.R_vrt = np.diag([5.0])
+        self.Q_hrz = np.diag([25.0, 25.0, 5.0, 5.0])
+        self.R_hrz = np.diag([10.0, 10.0])
+        self.Q_vrt = np.diag([25.0, 5.0])
+        self.R_vrt = np.diag([10.0])
 
         # ---- Kinematic reachable-set parameters ----------------------------
         self.a_reach_xy = 1.6     # ~ g*tan(a_xy_lim); tune to widen/shrink set
-        self.a_reach_z = 3.0
+        self.a_reach_z = 9.0
         self.v_max = 1.0
         self.reach_margin = 0.85
 
@@ -115,8 +115,9 @@ class MPCPIDHYControl(BaseControl):
         v_z = abs(cur_vel[2])
         stop_dist_z = (v_z ** 2) / (2.0 * self.a_reach_z + 1e-9)
         arrestable_z = (stop_dist_z <= self.reach_margin * max(d_z, 1e-6)) or d_z < 0.05
+        reachable_z = (d_z <= self.v_max * (self.N * self.dt) * 1.5) or d_z < 0.05
 
-        return bool(arrestable_xy and reachable_xy and arrestable_z)
+        return bool(arrestable_xy and reachable_xy and arrestable_z and reachable_z)
 
     # ------------------------------------------------------------------ #
     #  Main entry point                                                  #

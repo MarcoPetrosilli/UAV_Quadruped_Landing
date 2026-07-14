@@ -35,7 +35,7 @@ DEFAULT_USER_DEBUG_GUI = False
 DEFAULT_OBSTACLES = True
 DEFAULT_SIMULATION_FREQ_HZ = 240
 DEFAULT_CONTROL_FREQ_HZ = 48
-DEFAULT_DURATION_SEC = 30
+DEFAULT_DURATION_SEC = 20
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
@@ -68,7 +68,7 @@ def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
     return states, wp_counters, old_wp_id, stop_delta
 
 
-def LOS_wp(p_actual, p_start, p_end, delta):
+def LOS_wp(p_actual, p_start, p_end, delta, stop_delta):
     """Classic single-point LOS carrot (no velocity reference).
 
     Projects the current position on the path segment and returns the point a
@@ -138,18 +138,18 @@ def run(drone=DEFAULT_DRONES,
     ####################################################################
     #### Waypoints #####################################################
     ####################################################################
-    v_plat = [0.1, 0.0, 0.0]
+    v_plat = [0.0, 0.0, 0.0]
     w_plat = [0.0, 0.0, 0.0]
 
     WP_MISSION = np.array([
         starting_pos,                             # IDLE
-        [starting_pos[0], starting_pos[1], 1.2],  # RISING
+        [starting_pos[0], starting_pos[1], 1.8],  # RISING
         [3.5, 3.5, 1.8],                          # AIR TARGET
         [3.5, 3.5, 0.15]                          # LANDING
     ])
 
     NUM_WP = 4
-    stop_delta = 0.3
+    stop_delta = 0.1
     wp_counters = np.array([int((i*NUM_WP/6) % NUM_WP) for i in range(num_drones)])
     old_wp_id = 0
     states = ["idle" for _ in range(num_drones)]
@@ -212,7 +212,7 @@ def run(drone=DEFAULT_DRONES,
 
                 # per-phase tilt authority (kept from your tuning)
                 if wp_counters[j] == 3:      # landing
-                    a_xy = 0.07
+                    a_xy = 0.17
                 else:                        # rising / nav_to_wp
                     a_xy = 0.17
 
@@ -220,7 +220,8 @@ def run(drone=DEFAULT_DRONES,
                 p_LOS, reached_end = LOS_wp(actual_pt,
                                             WP_MISSION[old_wp_id],
                                             WP_MISSION[wp_counters[j]],
-                                            delta=LOS_DELTA)
+                                            delta=LOS_DELTA,
+                                            stop_delta = stop_delta)
 
                 action[j, :], _, _ = ctrl[j].computeControlFromState(
                     control_timestep=env.CTRL_TIMESTEP,
