@@ -55,7 +55,7 @@ def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
                 states[j] = "nav_to_wp"
                 old_wp_id = 1
                 wp_counters[j] = 2
-                stop_delta = 0.1
+                stop_delta = 0.3
             elif states[j] == "nav_to_wp":
                 states[j] = "landing"
                 old_wp_id = 2
@@ -235,17 +235,19 @@ def run(drone=DEFAULT_DRONES,
                 # per-phase tilt authority (kept from your tuning)
                 if wp_counters[j] == 3:      # landing
                     a_xy = 0.17
+                    los_delta = 0.15
                 else:                        # rising / nav_to_wp
                     a_xy = 0.17
+                    los_delta = 0.3
 
                 # classic single-point LOS carrot (no velocity reference)
                 p_LOS, reached_end = LOS_wp(actual_pt,
                                             WP_MISSION[old_wp_id],
                                             WP_MISSION[wp_counters[j]],
-                                            delta=LOS_DELTA,
+                                            delta=los_delta,
                                             stop_delta = stop_delta)
 
-                action[j, :], _, _ = ctrl[j].computeControlFromState(
+                action[j, :], _, _, control_type = ctrl[j].computeControlFromState(
                     control_timestep=env.CTRL_TIMESTEP,
                     state=obs[j],
                     target_pos=p_LOS,
@@ -272,7 +274,8 @@ def run(drone=DEFAULT_DRONES,
                        control=np.hstack([p_los_arr[0:2], INIT_XYZS[j, 2],
                                           INIT_RPYS[j, :], np.zeros(6)]),
                        pos_e=pos_e_plot,
-                       p_LOS=p_los_arr[:])
+                       p_LOS=p_los_arr[:],
+                       control_type = control_type)
 
         env.render()
         if gui:

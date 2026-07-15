@@ -77,6 +77,7 @@ class Logger(object):
                                                                                                              # ang_vel_x,
                                                                                                              # ang_vel_y,
                                                                                                              # ang_vel_z
+        self.control_type = np.zeros((1, duration_sec*self.LOGGING_FREQ_HZ))                                                                                                   
 
     ################################################################################
 
@@ -87,7 +88,8 @@ class Logger(object):
             control=np.zeros(12),
             pos_e=np.zeros(3),
             p_LOS=np.zeros(3),
-            v_LOS=np.zeros(3)
+            v_LOS=np.zeros(3),
+            control_type = 0
             ):
         """Logs entries for a single simulation step, of a single drone.
 
@@ -111,6 +113,7 @@ class Logger(object):
             self.timestamps = np.concatenate((self.timestamps, np.zeros((self.NUM_DRONES, 1))), axis=1)
             self.states = np.concatenate((self.states, np.zeros((self.NUM_DRONES, 19, 1))), axis=2)
             self.controls = np.concatenate((self.controls, np.zeros((self.NUM_DRONES, 12, 1))), axis=2)
+            self.control_type = np.concatenate((self.control_type, np.zeros((self.NUM_DRONES, 1))), axis=1)
         #### Advance a counter is the matrices have overgrown it ###
         elif not self.PREALLOCATED_ARRAYS and self.timestamps.shape[1] > current_counter:
             current_counter = self.timestamps.shape[1]-1
@@ -120,6 +123,8 @@ class Logger(object):
         self.states[drone, :, current_counter] = np.hstack([state[0:3], state[10:13], v_LOS, pos_e, state[16:20], p_LOS])
         self.controls[drone, :, current_counter] = control
         self.counters[drone] = current_counter + 1
+        
+        self.control_type[drone, current_counter] = control_type
 
     ################################################################################
 
@@ -304,10 +309,10 @@ class Logger(object):
         #### RPY Rates #############################################
         row = 3
         for j in range(self.NUM_DRONES):
-            rdot = np.hstack([0, (self.states[j, 6, 1:] - self.states[j, 6, 0:-1]) * self.LOGGING_FREQ_HZ ])
-            axs[row, col].plot(t, rdot, label="drone_"+str(j))
+            #rdot = np.hstack([0, (self.states[j, 6, 1:] - self.states[j, 6, 0:-1]) * self.LOGGING_FREQ_HZ ])
+            axs[row, col].plot(t, self.control_type[j, :], label="drone_"+str(j))
         axs[row, col].set_xlabel('time')
-        axs[row, col].set_ylabel('rdot (rad/s)')
+        axs[row, col].set_ylabel('control_type')
         row = 4
         for j in range(self.NUM_DRONES):
             pdot = np.hstack([0, (self.states[j, 7, 1:] - self.states[j, 7, 0:-1]) * self.LOGGING_FREQ_HZ ])

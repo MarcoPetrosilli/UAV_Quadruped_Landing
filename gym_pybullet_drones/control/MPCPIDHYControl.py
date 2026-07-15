@@ -165,7 +165,7 @@ class MPCPIDHYControl(BaseControl):
             rpm = self._dslPIDAttitudeControl(
                 control_timestep, thrust, cur_quat, computed_target_rpy, target_rpy_rates)
             cur_rpy = p.getEulerFromQuaternion(cur_quat)
-            return rpm, pos_e, computed_target_rpy[2] - cur_rpy[2]
+            return rpm, pos_e, computed_target_rpy[2] - cur_rpy[2], 1
         else:
             # ---------------- DSL PID REACH MODE ----------------
             self.mpc_step = 0  # force fresh MPC solve when we re-enter the set
@@ -174,7 +174,7 @@ class MPCPIDHYControl(BaseControl):
             rpm = self._dslPIDAttitudeControl(
                 control_timestep, thrust, cur_quat, computed_target_rpy, target_rpy_rates)
             cur_rpy = p.getEulerFromQuaternion(cur_quat)
-            return rpm, pos_e, computed_target_rpy[2] - cur_rpy[2]
+            return rpm, pos_e, computed_target_rpy[2] - cur_rpy[2], 0
 
     # ------------------------------------------------------------------ #
     #  MPC position control (position error, zero velocity ref)          #
