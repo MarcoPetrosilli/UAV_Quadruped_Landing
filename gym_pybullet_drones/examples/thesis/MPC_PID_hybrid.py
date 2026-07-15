@@ -55,7 +55,7 @@ def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
                 states[j] = "nav_to_wp"
                 old_wp_id = 1
                 wp_counters[j] = 2
-                stop_delta = 0.3
+                stop_delta = 0.15
             elif states[j] == "nav_to_wp":
                 states[j] = "landing"
                 old_wp_id = 2
@@ -69,15 +69,7 @@ def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
 
 
 def LOS_wp(p_actual, p_start, p_end, delta, stop_delta):
-    """Single-point LOS carrot with progressive look-ahead contraction.
 
-    The look-ahead distance shrinks as the drone approaches the end of the
-    segment, so the carrot collapses onto the final waypoint instead of
-    saturating at `delta` ahead. This makes the position error seen by the
-    PID decay to zero, so the drone reaches the waypoint-switch threshold
-    almost at rest: no residual cruise velocity, no inertia-driven overshoot
-    at the switch. Purely geometric braking (no velocity reference).
-    """
     p_actual = np.array(p_actual)
     p_start = np.array(p_start)
     p_end = np.array(p_end)
@@ -92,15 +84,10 @@ def LOS_wp(p_actual, p_start, p_end, delta, stop_delta):
     v = p_actual - p_start
     s = np.dot(v, u)
 
-    # residual distance along the path
+    
     dist_to_end = path_length - s
 
-    # --- progressive contraction of the look-ahead ---
-    # far from the end  -> delta_eff = delta (full look-ahead, cruise)
-    # near the end      -> delta_eff -> 0 (carrot collapses on the waypoint)
-    # the blending starts one `delta` before the switch threshold, so that at
-    # s = path_length - stop_delta the drone is already slowing down.
-    brake_len = 2.0 * delta            # length of the deceleration zone
+    brake_len = 1.0 * delta            
     if dist_to_end <= stop_delta:
         delta_eff = 0.0
     elif dist_to_end >= stop_delta + brake_len:

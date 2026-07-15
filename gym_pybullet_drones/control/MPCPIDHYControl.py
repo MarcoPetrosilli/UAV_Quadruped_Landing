@@ -28,7 +28,7 @@ class MPCPIDHYControl(BaseControl):
     def __init__(self, drone_model: DroneModel, g: float = 9.8, dt=0.02):
         super().__init__(drone_model=drone_model, g=g)
         self.dt = dt
-        self.N = 40
+        self.N = 20
 
         # ---- MPC prediction models -----------------------------------------
         self.A_hrz = np.array([[1, 0, dt, 0],
