@@ -60,7 +60,7 @@ class MPCPIDHYControl(BaseControl):
 
         # ---- DSL PID gains (stock DSLPIDControl) ---------------------------
         self.P_COEFF_FOR = np.array([.4, .4, 1.25])
-        self.I_COEFF_FOR = np.array([.05, .05, .05])
+        self.I_COEFF_FOR = np.array([.0, .0, .05])
         self.D_COEFF_FOR = np.array([.2, .2, .5])
         self.P_COEFF_TOR = np.array([70000., 70000., 60000.])
         self.I_COEFF_TOR = np.array([.0, .0, 500.])
@@ -147,7 +147,7 @@ class MPCPIDHYControl(BaseControl):
                 self.prev_mpc_euler = self.last_mpc_euler.copy()
                 self.mpc_step = 1
                 thrust_new, euler_new, pos_e = self._mpc_position_control(
-                    cur_pos, cur_vel, wp, target_rpy, a_xy_lim)
+                    cur_pos, cur_vel, [3.5, 3.5, 0.15], target_rpy, a_xy_lim)
                 self.last_mpc_thrust = thrust_new
                 self.last_mpc_euler = euler_new
                 self.pos_e = pos_e

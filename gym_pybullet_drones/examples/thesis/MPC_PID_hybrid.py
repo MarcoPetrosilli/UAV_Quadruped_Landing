@@ -55,7 +55,7 @@ def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
                 states[j] = "nav_to_wp"
                 old_wp_id = 1
                 wp_counters[j] = 2
-                stop_delta = 0.3
+                stop_delta = 0.1
             elif states[j] == "nav_to_wp":
                 states[j] = "landing"
                 old_wp_id = 2
@@ -69,11 +69,14 @@ def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
 
 
 def LOS_wp(p_actual, p_start, p_end, delta, stop_delta):
-    """Classic single-point LOS carrot (no velocity reference).
+    """Single-point LOS carrot with progressive look-ahead contraction.
 
-    Projects the current position on the path segment and returns the point a
-    look-ahead distance `delta` further along the path. Returns a single 3D
-    waypoint and a reached_end flag.
+    The look-ahead distance shrinks as the drone approaches the end of the
+    segment, so the carrot collapses onto the final waypoint instead of
+    saturating at `delta` ahead. This makes the position error seen by the
+    PID decay to zero, so the drone reaches the waypoint-switch threshold
+    almost at rest: no residual cruise velocity, no inertia-driven overshoot
+    at the switch. Purely geometric braking (no velocity reference).
     """
     p_actual = np.array(p_actual)
     p_start = np.array(p_start)
@@ -89,14 +92,33 @@ def LOS_wp(p_actual, p_start, p_end, delta, stop_delta):
     v = p_actual - p_start
     s = np.dot(v, u)
 
+    # residual distance along the path
+    dist_to_end = path_length - s
+
+    # --- progressive contraction of the look-ahead ---
+    # far from the end  -> delta_eff = delta (full look-ahead, cruise)
+    # near the end      -> delta_eff -> 0 (carrot collapses on the waypoint)
+    # the blending starts one `delta` before the switch threshold, so that at
+    # s = path_length - stop_delta the drone is already slowing down.
+    brake_len = 2.0 * delta            # length of the deceleration zone
+    if dist_to_end <= stop_delta:
+        delta_eff = 0.0
+    elif dist_to_end >= stop_delta + brake_len:
+        delta_eff = delta
+    else:
+        delta_eff = delta * (dist_to_end - stop_delta) / brake_len
+
+    delta_eff = min(delta_eff, max(0.0, dist_to_end))
+
     reached_end = False
-    if (s + delta) <= 0:
+    if (s + delta_eff) <= 0:
         p_LOS = p_start
-    elif (s + delta) >= path_length:
+    elif (s + delta_eff) >= path_length:
         p_LOS = p_end
         reached_end = True
     else:
-        p_LOS = p_start + (s + delta) * u
+        p_LOS = p_start + (s + delta_eff) * u
+
     return p_LOS, reached_end
 
 
