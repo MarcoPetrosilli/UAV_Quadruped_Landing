@@ -230,6 +230,7 @@ def run(drone=DEFAULT_DRONES,
                     a_xy = 0.17
                     los_delta = 0.3
                     target_v = np.zeros(3)
+                    #target_v = v_plat
                 else:
                     a_xy = 0.17
                     los_delta = 0.3
