@@ -40,6 +40,8 @@ DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
 
+
+
 def initialize_state(num_drones, states, wp_counters):
     for j in range(num_drones):
         states[j] = "rising"
@@ -164,6 +166,7 @@ def run(drone=DEFAULT_DRONES,
     old_wp_id = 0
     states = ["idle" for _ in range(num_drones)]
     [states, wp_counters] = initialize_state(num_drones, states, wp_counters)
+   
 
     env = CtrlAviary(drone_model=drone,
                      num_drones=num_drones,
@@ -242,7 +245,8 @@ def run(drone=DEFAULT_DRONES,
                                             WP_MISSION[wp_counters[j]],
                                             delta=los_delta,
                                             stop_delta = stop_delta)
-
+                landing = True if states[j] == "landing" else False
+		
                 action[j, :], _, _, control_type = ctrl[j].computeControlFromState(
                     control_timestep=env.CTRL_TIMESTEP,
                     state=obs[j],
@@ -251,7 +255,8 @@ def run(drone=DEFAULT_DRONES,
                     target_vel=np.zeros(3),          # zero velocity reference
                     target_rpy_rates=np.zeros(3),
                     a_xy_lim=a_xy,
-                    final_pos=WP_MISSION[3])
+                    final_pos=WP_MISSION[3],
+                    landing = landing)
 
             pos_e[j] = WP_MISSION[wp_counters[j]] - obs[j][0:3]
 

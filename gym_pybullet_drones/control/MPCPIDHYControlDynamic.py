@@ -100,16 +100,26 @@ class MPCPIDHYControlDynamic(BaseControl):
     # ------------------------------------------------------------------ #
     #  Kinematic backward-reachable-set gate                             #
     # ------------------------------------------------------------------ #
-    def is_in_reachable_set(self, cur_pos, cur_vel, target_pos):
+    def is_in_reachable_set(self, cur_pos, cur_vel, target_pos, target_vel=None):
         cur_pos = np.array(cur_pos)
         cur_vel = np.array(cur_vel)
         target_pos = np.array(target_pos)
 
-        d_xy = np.linalg.norm(target_pos[0:2] - cur_pos[0:2])
+        
+        
+        tf = np.linalg.norm(cur_vel-target_vel)/self.a_reach_xy
+        d_xy_stop = np.linalg.norm(target_pos[0:2] + target_vel[0:2]*tf - cur_pos[0:2])
+        
+        d_xy_reach = np.linalg.norm((target_pos[0:2] + target_vel[0:2]*self.N*self.dt) - cur_pos[0:2])
+        
         v_xy = np.linalg.norm(cur_vel[0:2])
-        stop_dist_xy = (v_xy ** 2) / (2.0 * self.a_reach_xy + 1e-9)
-        arrestable_xy = (stop_dist_xy <= self.reach_margin * max(d_xy, 1e-6)) or d_xy < 0.05
-        reachable_xy = (d_xy <= self.v_max * (self.N * self.dt) * 1.5) or d_xy < 0.05
+        
+        v_target = np.linalg.norm(target_vel[0:2])
+        
+        stop_dist_xy = (v_xy ** 2 - v_target ** 2) / (2.0 * self.a_reach_xy + 1e-9)
+        arrestable_xy = (stop_dist_xy <= self.reach_margin * max(d_xy_stop, 1e-6)) or d_xy_stop < 0.05
+        
+        reachable_xy = (d_xy_reach <= self.v_max * (self.N * self.dt) * 1.5) or d_xy_reach < 0.05
 
         d_z = abs(target_pos[2] - cur_pos[2])
         v_z = abs(cur_vel[2])
@@ -133,14 +143,15 @@ class MPCPIDHYControlDynamic(BaseControl):
                        target_vel=np.zeros(3),
                        target_rpy_rates=np.zeros(3),
                        a_xy_lim=0.17,
-                       final_pos = None
+                       final_pos = None,
+                       landing = False
                        ):
         self.control_counter += 1
         wp = np.array(target_pos, dtype=float)
         wp_final = np.array(final_pos, dtype=float) if final_pos is not None else wp
-        in_set = self.is_in_reachable_set(cur_pos, cur_vel, wp_final)
+        in_set = self.is_in_reachable_set(cur_pos, cur_vel, wp_final, target_vel)
 
-        if in_set:
+        if in_set and landing:
             # ---------------- MPC MODE ----------------
             run_mpc = (self.control_counter % self.MPC_FREQ_DIVIDER == 0
                        or self.mpc_step == 0)

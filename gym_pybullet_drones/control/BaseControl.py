@@ -60,7 +60,8 @@ class BaseControl(object):
                                 target_vel=np.zeros((20,3)),
                                 target_rpy_rates=np.zeros(3),
                                 a_xy_lim = 0.17,
-                                final_pos = None
+                                final_pos = None,
+                                landing = False
                                 ):
         """Interface method using `computeControl`.
 
@@ -93,7 +94,8 @@ class BaseControl(object):
                                    target_vel=target_vel,
                                    target_rpy_rates=target_rpy_rates,
                                    a_xy_lim = a_xy_lim,
-                                   final_pos = final_pos
+                                   final_pos = final_pos,
+                                   landing = landing
                                    )
 
     ################################################################################
