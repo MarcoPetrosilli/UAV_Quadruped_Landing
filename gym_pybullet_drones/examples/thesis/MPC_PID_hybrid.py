@@ -60,7 +60,7 @@ def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
                 states[j] = "landing"
                 old_wp_id = 2
                 wp_counters[j] = 3
-                stop_delta = 0.1
+                stop_delta = 0.05
             else:
                 states[j] = "idle"
                 old_wp_id = 3
@@ -85,17 +85,19 @@ def LOS_wp(p_actual, p_start, p_end, delta, stop_delta):
     s = np.dot(v, u)
 
     
-    dist_to_end = path_length - s
+    #dist_to_end = path_length - s
 
-    brake_len = 1.0 * delta            
-    if dist_to_end <= stop_delta:
-        delta_eff = 0.0
-    elif dist_to_end >= stop_delta + brake_len:
-        delta_eff = delta
-    else:
-        delta_eff = delta * (dist_to_end - stop_delta) / brake_len
+    #brake_len = 1.0 * delta            
+    #if dist_to_end <= stop_delta:
+    #    delta_eff = 0.0
+    #elif dist_to_end >= stop_delta + brake_len:
+    #    delta_eff = delta
+    #else:
+    #    delta_eff = delta * (dist_to_end - stop_delta) / brake_len
 
-    delta_eff = min(delta_eff, max(0.0, dist_to_end))
+    #delta_eff = min(delta_eff, max(0.0, dist_to_end))
+    
+    delta_eff = delta
 
     reached_end = False
     if (s + delta_eff) <= 0:
@@ -222,7 +224,7 @@ def run(drone=DEFAULT_DRONES,
                 # per-phase tilt authority (kept from your tuning)
                 if wp_counters[j] == 3:      # landing
                     a_xy = 0.17
-                    los_delta = 0.15
+                    los_delta = 0.3
                 else:                        # rising / nav_to_wp
                     a_xy = 0.17
                     los_delta = 0.3
@@ -233,7 +235,9 @@ def run(drone=DEFAULT_DRONES,
                                             WP_MISSION[wp_counters[j]],
                                             delta=los_delta,
                                             stop_delta = stop_delta)
-
+                
+                landing = True if states[j] == "landing" else False
+                
                 action[j, :], _, _, control_type = ctrl[j].computeControlFromState(
                     control_timestep=env.CTRL_TIMESTEP,
                     state=obs[j],
@@ -241,7 +245,9 @@ def run(drone=DEFAULT_DRONES,
                     target_rpy=INIT_RPYS[j, :],
                     target_vel=np.zeros(3),          # zero velocity reference
                     target_rpy_rates=np.zeros(3),
-                    a_xy_lim=a_xy)
+                    a_xy_lim=a_xy,
+                    final_pos=WP_MISSION[3],
+                    landing = landing)
 
             pos_e[j] = WP_MISSION[wp_counters[j]] - obs[j][0:3]
 

@@ -28,7 +28,7 @@ class MPCPIDHYControlDynamic(BaseControl):
     def __init__(self, drone_model: DroneModel, g: float = 9.8, dt=0.02):
         super().__init__(drone_model=drone_model, g=g)
         self.dt = dt
-        self.N = 40
+        self.N = 50
 
         # ---- MPC prediction models -----------------------------------------
         self.A_hrz = np.array([[1, 0, dt, 0],
@@ -69,8 +69,8 @@ class MPCPIDHYControlDynamic(BaseControl):
         # ---- MPC weights (position error, zero velocity ref) ---------------
         self.Q_hrz = np.diag([20.0, 20.0, 10.0, 10.0])
         self.R_hrz = np.diag([10.0, 10.0])
-        self.Q_vrt = np.diag([20.0, 10.0])
-        self.R_vrt = np.diag([10.0])
+        self.Q_vrt = np.diag([20.0, 15.0])
+        self.R_vrt = np.diag([15.0])
 
         # ---- Kinematic reachable-set parameters ----------------------------
         self.a_reach_xy = 1.6     # ~ g*tan(a_xy_lim); tune to widen/shrink set

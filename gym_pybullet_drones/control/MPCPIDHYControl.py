@@ -28,7 +28,7 @@ class MPCPIDHYControl(BaseControl):
     def __init__(self, drone_model: DroneModel, g: float = 9.8, dt=0.02):
         super().__init__(drone_model=drone_model, g=g)
         self.dt = dt
-        self.N = 20
+        self.N = 50
 
         # ---- MPC prediction models -----------------------------------------
         self.A_hrz = np.array([[1, 0, dt, 0],
@@ -67,9 +67,9 @@ class MPCPIDHYControl(BaseControl):
         self.D_COEFF_TOR = np.array([20000., 20000., 12000.])
 
         # ---- MPC weights (position error, zero velocity ref) ---------------
-        self.Q_hrz = np.diag([25.0, 25.0, 5.0, 5.0])
+        self.Q_hrz = np.diag([20.0, 20.0, 10.0, 10.0])
         self.R_hrz = np.diag([10.0, 10.0])
-        self.Q_vrt = np.diag([25.0, 5.0])
+        self.Q_vrt = np.diag([20.0, 15.0])
         self.R_vrt = np.diag([10.0])
 
         # ---- Kinematic reachable-set parameters ----------------------------
@@ -132,11 +132,14 @@ class MPCPIDHYControl(BaseControl):
                        target_rpy=np.zeros(3),
                        target_vel=np.zeros(3),
                        target_rpy_rates=np.zeros(3),
-                       a_xy_lim=0.17
+                       a_xy_lim=0.17,
+                       final_pos = None,
+                       landing = False
                        ):
         self.control_counter += 1
         wp = np.array(target_pos, dtype=float)
-        in_set = self.is_in_reachable_set(cur_pos, cur_vel, [3.5, 3.5, 0.15])
+        wp_final = np.array(final_pos, dtype=float) if final_pos is not None else wp
+        in_set = self.is_in_reachable_set(cur_pos, cur_vel, wp_final)
 
         if in_set:
             # ---------------- MPC MODE ----------------
@@ -147,7 +150,7 @@ class MPCPIDHYControl(BaseControl):
                 self.prev_mpc_euler = self.last_mpc_euler.copy()
                 self.mpc_step = 1
                 thrust_new, euler_new, pos_e = self._mpc_position_control(
-                    cur_pos, cur_vel, [3.5, 3.5, 0.15], target_rpy, a_xy_lim)
+                    cur_pos, cur_vel, wp_final, target_rpy, a_xy_lim)
                 self.last_mpc_thrust = thrust_new
                 self.last_mpc_euler = euler_new
                 self.pos_e = pos_e
