@@ -28,7 +28,7 @@ class MPCPIDHYControlDynamic(BaseControl):
     def __init__(self, drone_model: DroneModel, g: float = 9.8, dt=0.02):
         super().__init__(drone_model=drone_model, g=g)
         self.dt = dt
-        self.N = 50
+        self.N = 100
 
         # ---- MPC prediction models -----------------------------------------
         self.A_hrz = np.array([[1, 0, dt, 0],
@@ -69,7 +69,7 @@ class MPCPIDHYControlDynamic(BaseControl):
         # ---- MPC weights (position error, zero velocity ref) ---------------
         self.Q_hrz = np.diag([20.0, 20.0, 10.0, 10.0])
         self.R_hrz = np.diag([10.0, 10.0])
-        self.Q_vrt = np.diag([20.0, 15.0])
+        self.Q_vrt = np.diag([30.0, 15.0])
         self.R_vrt = np.diag([15.0])
 
         # ---- Kinematic reachable-set parameters ----------------------------
@@ -86,6 +86,8 @@ class MPCPIDHYControlDynamic(BaseControl):
         self.prev_mpc_euler = np.zeros(3)
         self.mpc_step = 0
         self.pos_e = np.zeros(3)
+        
+        self.mpc_activated = False
 
         self.reset()
 
@@ -151,7 +153,9 @@ class MPCPIDHYControlDynamic(BaseControl):
         wp_final = np.array(final_pos, dtype=float) if final_pos is not None else wp
         in_set = self.is_in_reachable_set(cur_pos, cur_vel, wp_final, target_vel)
 
-        if in_set and landing:
+        if (in_set and landing) or self.mpc_activated:
+            
+            self.mpc_activated = True
             # ---------------- MPC MODE ----------------
             run_mpc = (self.control_counter % self.MPC_FREQ_DIVIDER == 0
                        or self.mpc_step == 0)
