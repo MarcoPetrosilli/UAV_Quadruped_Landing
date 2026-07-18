@@ -106,17 +106,18 @@ class MPCPIDHYControlDynamic(BaseControl):
         cur_pos = np.array(cur_pos)
         cur_vel = np.array(cur_vel)
         target_pos = np.array(target_pos)
+        target_v = np.array(target_vel, dtype=float)
 
         
         
-        tf = np.linalg.norm(cur_vel-target_vel)/self.a_reach_xy
-        d_xy_stop = np.linalg.norm(target_pos[0:2] + target_vel[0:2]*tf - cur_pos[0:2])
+        tf = np.linalg.norm(cur_vel-target_v)/self.a_reach_xy
+        d_xy_stop = np.linalg.norm(target_pos[0:2] + target_v[0:2]*tf - cur_pos[0:2])
         
-        d_xy_reach = np.linalg.norm((target_pos[0:2] + target_vel[0:2]*self.N*self.dt) - cur_pos[0:2])
+        d_xy_reach = np.linalg.norm((target_pos[0:2] + target_v[0:2]*self.N*self.dt) - cur_pos[0:2])
         
         v_xy = np.linalg.norm(cur_vel[0:2])
         
-        v_target = np.linalg.norm(target_vel[0:2])
+        v_target = np.linalg.norm(target_v[0:2])
         
         stop_dist_xy = (v_xy ** 2 - v_target ** 2) / (2.0 * self.a_reach_xy + 1e-9)
         arrestable_xy = (stop_dist_xy <= self.reach_margin * max(d_xy_stop, 1e-6)) or d_xy_stop < 0.05
@@ -222,6 +223,7 @@ class MPCPIDHYControlDynamic(BaseControl):
         cost = 0
         cons = [x[:, 0] == [cur_x, cur_y, cur_vx, cur_vy]]
         for k in range(self.N):
+            xref = np.array([wp[0]+target_vel[0]*k*self.dt, wp[1]+target_vel[1]*k*self.dt, target_vel[0], target_vel[1]])
             cost += cp.quad_form(x[:, k] - xref, self.Q_hrz)
             cost += cp.quad_form(u[:, k], self.R_hrz)
             cons += [x[:, k + 1] == self.A_hrz @ x[:, k] + self.B_hrz @ u[:, k]]

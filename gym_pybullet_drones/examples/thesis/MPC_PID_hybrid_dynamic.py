@@ -52,7 +52,7 @@ def initialize_state(num_drones, states, wp_counters):
 def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
     for j in range(num_drones):
         distance = np.linalg.norm(pos_e[j])
-        if distance < stop_delta:
+        if distance <= stop_delta:
             if states[j] == "rising":
                 states[j] = "nav_to_wp"
                 old_wp_id = 1
@@ -150,7 +150,7 @@ def run(drone=DEFAULT_DRONES,
     ####################################################################
     #### Waypoints #####################################################
     ####################################################################
-    v_plat = [0.1, 0.0, 0.0]
+    v_plat = [0.3, 0.0, 0.0]
     w_plat = [0.0, 0.0, 0.0]
 
     WP_MISSION = np.array([
@@ -252,7 +252,7 @@ def run(drone=DEFAULT_DRONES,
                     state=obs[j],
                     target_pos=p_LOS,
                     target_rpy=INIT_RPYS[j, :],
-                    target_vel=np.zeros(3),          # zero velocity reference
+                    target_vel=target_v,    
                     target_rpy_rates=np.zeros(3),
                     a_xy_lim=a_xy,
                     final_pos=WP_MISSION[3],
@@ -260,12 +260,14 @@ def run(drone=DEFAULT_DRONES,
 
             pos_e[j] = WP_MISSION[wp_counters[j]] - obs[j][0:3]
 
-            if old_wp_id == 3 and wp_counters[j] == 0:
-                WP_MISSION[0] = WP_MISSION[3]
-                action[j, :] = np.zeros(4)
+            
 
         [states, wp_counters, old_wp_id, stop_delta] = update_state(
             pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta)
+            
+        if old_wp_id == 3 and wp_counters[j] == 0:
+                WP_MISSION[0] = WP_MISSION[3]
+                action[j, :] = np.zeros(4)
 
         #### Log #######################################################
         for j in range(num_drones):
