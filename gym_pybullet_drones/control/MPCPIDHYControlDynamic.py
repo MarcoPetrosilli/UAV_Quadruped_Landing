@@ -28,7 +28,7 @@ class MPCPIDHYControlDynamic(BaseControl):
     def __init__(self, drone_model: DroneModel, g: float = 9.8, dt=0.02):
         super().__init__(drone_model=drone_model, g=g)
         self.dt = dt
-        self.N = 100
+        self.N = 20
 
         # ---- MPC prediction models -----------------------------------------
         self.A_hrz = np.array([[1, 0, dt, 0],
@@ -88,6 +88,10 @@ class MPCPIDHYControlDynamic(BaseControl):
         self.pos_e = np.zeros(3)
         
         self.mpc_activated = False
+        
+        _P = np.load("reachable_polytope.npz")
+        self.H_ax, self.h_ax = _P["H_ax"], _P["h_ax"]   # horizontal per-axis (2D)
+        self.H_vz, self.h_vz = _P["H_vz"], _P["h_vz"]    # vertical (2D)
 
         self.reset()
 
@@ -103,34 +107,25 @@ class MPCPIDHYControlDynamic(BaseControl):
     #  Kinematic backward-reachable-set gate                             #
     # ------------------------------------------------------------------ #
     def is_in_reachable_set(self, cur_pos, cur_vel, target_pos, target_vel=None):
-        cur_pos = np.array(cur_pos)
-        cur_vel = np.array(cur_vel)
-        target_pos = np.array(target_pos)
-        target_v = np.array(target_vel, dtype=float)
+        cur_pos = np.asarray(cur_pos, float)
+        cur_vel = np.asarray(cur_vel, float)
+        target_pos = np.asarray(target_pos, float)
+        v_tgt = np.zeros(3) if target_vel is None else np.asarray(target_vel, float)
 
-        
-        
-        tf = np.linalg.norm(cur_vel-target_v)/self.a_reach_xy
-        d_xy_stop = np.linalg.norm(target_pos[0:2] + target_v[0:2]*tf - cur_pos[0:2])
-        
-        d_xy_reach = np.linalg.norm((target_pos[0:2] + target_v[0:2]*self.N*self.dt) - cur_pos[0:2])
-        
-        v_xy = np.linalg.norm(cur_vel[0:2])
-        
-        v_target = np.linalg.norm(target_v[0:2])
-        
-        stop_dist_xy = (v_xy ** 2 - v_target ** 2) / (2.0 * self.a_reach_xy + 1e-9)
-        arrestable_xy = (stop_dist_xy <= self.reach_margin * max(d_xy_stop, 1e-6)) or d_xy_stop < 0.05
-        
-        reachable_xy = (d_xy_reach <= self.v_max * (self.N * self.dt) * 1.5) or d_xy_reach < 0.05
+        # relative state (drone minus platform)
+        e_pos = cur_pos - target_pos
+        e_vel = cur_vel - v_tgt
 
-        d_z = abs(target_pos[2] - cur_pos[2])
-        v_z = abs(cur_vel[2])
-        stop_dist_z = (v_z ** 2) / (2.0 * self.a_reach_z + 1e-9)
-        arrestable_z = (stop_dist_z <= self.reach_margin * max(d_z, 1e-6)) or d_z < 0.05
-        reachable_z = (d_z <= self.v_max * (self.N * self.dt) * 1.5) or d_z < 0.05
+        def inside(H, h, x):
+            return bool(np.all(H @ x <= h + 1e-9))
 
-        return bool(arrestable_xy and reachable_xy and arrestable_z and reachable_z)
+        # horizontal: one 2-D test per axis (state [e, ev])
+        in_x = inside(self.H_ax, self.h_ax, np.array([e_pos[0], e_vel[0]]))
+        in_y = inside(self.H_ax, self.h_ax, np.array([e_pos[1], e_vel[1]]))
+        # vertical
+        in_z = inside(self.H_vz, self.h_vz, np.array([e_pos[2], e_vel[2]]))
+
+        return in_x and in_y and in_z
 
     # ------------------------------------------------------------------ #
     #  Main entry point                                                  #
@@ -154,7 +149,8 @@ class MPCPIDHYControlDynamic(BaseControl):
         wp_final = np.array(final_pos, dtype=float) if final_pos is not None else wp
         in_set = self.is_in_reachable_set(cur_pos, cur_vel, wp_final, target_vel)
 
-        if (in_set and landing) or self.mpc_activated:
+        #if (in_set and landing) or self.mpc_activated:
+        if in_set and landing:
             
             self.mpc_activated = True
             # ---------------- MPC MODE ----------------
