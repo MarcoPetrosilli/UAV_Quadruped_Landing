@@ -36,8 +36,56 @@ current state into this frame and test H x <= h.
 import numpy as np
 from scipy.spatial import ConvexHull, HalfspaceIntersection
 from scipy.optimize import linprog
+import matplotlib.pyplot as plt
 
 
+def ordered_vertices_2d(H, h):
+    """Vertici di un politopo 2D ordinati in senso antiorario (per il poligono)."""
+    V = vertices(H, h)
+    c = V.mean(axis=0)
+    ang = np.arctan2(V[:, 1] - c[1], V[:, 0] - c[0])
+    return V[np.argsort(ang)]
+
+
+def controllable_set_history(A, B, XH, Xh, UH, Uh, SH, Sh, N, tag=""):
+    """Come controllable_set, ma restituisce la LISTA [K_0, K_1, ..., K_N]."""
+    H_K, h_K = SH.copy(), Sh.copy()
+    history = [(H_K.copy(), h_K.copy())]
+    for j in range(1, N + 1):
+        Hp, hp = pre_set(H_K, h_K, A, B, UH, Uh)
+        H_K, h_K = intersect(Hp, hp, XH, Xh)
+        history.append((H_K.copy(), h_K.copy()))
+    print(f"  [{tag}] storia: {len(history)} set (K_0..K_{N})")
+    return history
+
+
+def plot_nested_sets(history, xlabel, ylabel, title, fname, step=1):
+    """Disegna i set annidati; 'step' salta iterazioni se N e' grande."""
+    fig, ax = plt.subplots(figsize=(7.5, 6))
+    cmap = plt.cm.viridis
+    idxs = list(range(0, len(history), step))
+    if idxs[-1] != len(history) - 1:
+        idxs.append(len(history) - 1)
+    for j in idxs:
+        H, h = history[j]
+        V = ordered_vertices_2d(H, h)
+        Vc = np.vstack([V, V[0]])          # chiudi il poligono
+        col = cmap(j / (len(history) - 1))
+        ax.plot(Vc[:, 0], Vc[:, 1], color=col, lw=1.2,
+                label=f"K_{j}" if j in (0, len(history) - 1) else None)
+    # evidenzia il set finale
+    Hf, hf = history[-1]
+    Vf = ordered_vertices_2d(Hf, hf); Vf = np.vstack([Vf, Vf[0]])
+    ax.fill(Vf[:, 0], Vf[:, 1], color=cmap(1.0), alpha=0.10)
+    sm = plt.cm.ScalarMappable(cmap=cmap,
+                               norm=plt.Normalize(0, len(history) - 1))
+    fig.colorbar(sm, ax=ax, label="iterazione j (passo backward)")
+    ax.set_xlabel(xlabel); ax.set_ylabel(ylabel); ax.set_title(title)
+    ax.grid(alpha=0.3); ax.axhline(0, color='k', lw=0.5); ax.axvline(0, color='k', lw=0.5)
+    plt.tight_layout()
+    plt.savefig(fname, dpi=110)
+    print(f"  salvato {fname}")
+    
 # ----------------------------------------------------------------------
 #  Polytope helpers  (H-representation:  H x <= h)
 # ----------------------------------------------------------------------
@@ -129,10 +177,22 @@ def main():
     XH, Xh = box([pos_max, v_max])
     UH, Uh = box([a_xy_lim])
     SH, Sh = box([0.10, 0.10])     # terminal "captured" box (rel. pos & vel)
-    N_hrz = 70
+    N_hrz = 80
 
     print("Horizontal per-axis controllable set:")
-    H_ax, h_ax = controllable_set(A_ax, B_ax, XH, Xh, UH, Uh, SH, Sh, N_hrz, "hrz")
+    #H_ax, h_ax = controllable_set(A_ax, B_ax, XH, Xh, UH, Uh, SH, Sh, N_hrz, "hrz")
+    
+    hist_h = controllable_set_history(A_ax, B_ax, XH, Xh, UH, Uh, SH, Sh, N_hrz, "hrz")
+    plot_nested_sets(hist_h,
+                     "distanza relativa e_x [m]", "velocita relativa e_vx [m/s]",
+                     "Set controllabile N-step — asse X (= asse Y)",
+                     "reachable_x.png", step=max(1, N_hrz // 15))
+    plot_nested_sets(hist_h,
+                     "distanza relativa e_y [m]", "velocita relativa e_vy [m/s]",
+                     "Set controllabile N-step — asse Y",
+                     "reachable_y.png", step=max(1, N_hrz // 15))
+                     
+    H_ax, h_ax = hist_h[-1]
 
     # ---------- VERTICAL double integrator ----------
     # state [ez, evz] ; input = az directly
@@ -142,10 +202,18 @@ def main():
     XHv, Xhv = box([pos_max, v_max])
     UHv, Uhv = box([az_lim])
     SHv, Shv = box([0.10, 0.10])
-    N_vrt = 70
+    N_vrt = 80
 
     print("Vertical controllable set:")
-    H_vz, h_vz = controllable_set(A_vz, B_vz, XHv, Xhv, UHv, Uhv, SHv, Shv, N_vrt, "vrt")
+    #H_vz, h_vz = controllable_set(A_vz, B_vz, XHv, Xhv, UHv, Uhv, SHv, Shv, N_vrt, "vrt")
+    
+    hist_v = controllable_set_history(A_vz, B_vz, XHv, Xhv, UHv, Uhv, SHv, Shv, N_vrt, "vrt")
+    plot_nested_sets(hist_v,
+                     "distanza relativa e_z [m]", "velocita relativa e_vz [m/s]",
+                     "Set controllabile N-step — asse Z",
+                     "reachable_z.png", step=max(1, N_vrt // 15))
+                     
+    H_vz, h_vz = hist_v[-1]
 
     np.savez("reachable_polytope.npz",
              H_ax=H_ax, h_ax=h_ax,          # per-axis horizontal set (2D)

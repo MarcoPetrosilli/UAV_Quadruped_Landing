@@ -28,7 +28,7 @@ class MPCPIDHYControlDynamic(BaseControl):
     def __init__(self, drone_model: DroneModel, g: float = 9.8, dt=0.02):
         super().__init__(drone_model=drone_model, g=g)
         self.dt = dt
-        self.N = 20
+        self.N = 80
 
         # ---- MPC prediction models -----------------------------------------
         self.A_hrz = np.array([[1, 0, dt, 0],
@@ -149,8 +149,8 @@ class MPCPIDHYControlDynamic(BaseControl):
         wp_final = np.array(final_pos, dtype=float) if final_pos is not None else wp
         in_set = self.is_in_reachable_set(cur_pos, cur_vel, wp_final, target_vel)
 
-        #if (in_set and landing) or self.mpc_activated:
-        if in_set and landing:
+        if (in_set and landing) or self.mpc_activated:
+        #if in_set and landing:
             
             self.mpc_activated = True
             # ---------------- MPC MODE ----------------
