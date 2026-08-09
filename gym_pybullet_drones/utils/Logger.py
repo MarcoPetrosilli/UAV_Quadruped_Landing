@@ -49,35 +49,35 @@ class Logger(object):
         self.timestamps = np.zeros((num_drones, duration_sec*self.LOGGING_FREQ_HZ))
         #### Note: this is the suggest information to log ##############################
         self.states = np.zeros((num_drones, 19, duration_sec*self.LOGGING_FREQ_HZ)) #### 16 states: pos_x,
-                                                                                                  # pos_y,
-                                                                                                  # pos_z,
-                                                                                                  # vel_x,
-                                                                                                  # vel_y,
-                                                                                                  # vel_z,
-                                                                                                  # roll,
-                                                                                                  # pitch,
-                                                                                                  # yaw,
-                                                                                                  # ang_vel_x,
-                                                                                                  # ang_vel_y,
-                                                                                                  # ang_vel_z,
-                                                                                                  # rpm0,
-                                                                                                  # rpm1,
-                                                                                                  # rpm2,
-                                                                                                  # rpm3
+                                                                                      # pos_y,
+                                                                                      # pos_z,
+                                                                                      # vel_x,
+                                                                                      # vel_y,
+                                                                                      # vel_z,
+                                                                                      # roll,
+                                                                                      # pitch,
+                                                                                      # yaw,
+                                                                                      # ang_vel_x,
+                                                                                      # ang_vel_y,
+                                                                                      # ang_vel_z,
+                                                                                      # rpm0,
+                                                                                      # rpm1,
+                                                                                      # rpm2,
+                                                                                      # rpm3
         #### Note: this is the suggest information to log ##############################
         self.controls = np.zeros((num_drones, 12, duration_sec*self.LOGGING_FREQ_HZ)) #### 12 control targets: pos_x,
-                                                                                                             # pos_y,
-                                                                                                             # pos_z,
-                                                                                                             # vel_x, 
-                                                                                                             # vel_y,
-                                                                                                             # vel_z,
-                                                                                                             # roll,
-                                                                                                             # pitch,
-                                                                                                             # yaw,
-                                                                                                             # ang_vel_x,
-                                                                                                             # ang_vel_y,
-                                                                                                             # ang_vel_z
-        self.control_type = np.zeros((1, duration_sec*self.LOGGING_FREQ_HZ))                                                                                                   
+                                                                                                               # pos_y,
+                                                                                                               # pos_z,
+                                                                                                               # vel_x, 
+                                                                                                               # vel_y,
+                                                                                                               # vel_z,
+                                                                                                               # roll,
+                                                                                                               # pitch,
+                                                                                                               # yaw,
+                                                                                                               # ang_vel_x,
+                                                                                                               # ang_vel_y,
+                                                                                                               # ang_vel_z
+        self.control_type = np.zeros((1, duration_sec*self.LOGGING_FREQ_HZ))                                                                                                          
 
     ################################################################################
 
@@ -372,8 +372,8 @@ class Logger(object):
             for j in range (2):
                 axs[i, j].grid(True)
                 axs[i, j].legend(loc='upper right',
-                         frameon=True
-                         )
+                                 frameon=True
+                                 )
         fig.subplots_adjust(left=0.06,
                             bottom=0.05,
                             right=0.99,
@@ -406,7 +406,6 @@ class Logger(object):
             
             step_size = max(1, int(len(act_x) / 50)) 
 
-
             ax3d.quiver(act_x[::step_size], act_y[::step_size], act_z[::step_size], 
                         los_x[::step_size] - act_x[::step_size],                    
                         los_y[::step_size] - act_y[::step_size],                    
@@ -430,7 +429,6 @@ class Logger(object):
                         width=0.003,
                         label=f"Drone {j} Error Vector" if j == 0 else "" 
                         )
-      
 
         ax3d.set_xlabel('X (m)')
         ax3d.set_ylabel('Y (m)')
@@ -449,3 +447,77 @@ class Logger(object):
             plt.savefig(os.path.join('results', 'output_figure.png'))
         else:
             plt.show()
+
+    ################################################################################
+
+    def plot_reachable_entry(self, final_pos, target_vel=None,
+                             npz_path="reachable_polytope.npz", drone=0,
+                             landing_mask=None, tol=1e-6, save=None):
+        """Stato-errore sul set controllabile piu esterno, ristretto alla fase
+        di landing, con marcatura dell'ingresso nel gate congiunto (set prodotto)."""
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from matplotlib.collections import LineCollection
+
+        d = np.load(npz_path)
+        H_ax, h_ax, H_vz, h_vz = d["H_ax"], d["h_ax"], d["H_vz"], d["h_vz"]
+        V_ax, V_vz = d["V_ax"], d["V_vz"]
+
+        pos = self.states[drone, 0:3, :]          # <-- righe posizione: verifica layout
+        vel = self.states[drone, 3:6, :]          # <-- righe velocita:  verifica layout
+        fp  = np.asarray(final_pos, float); fp = fp[:, None] if fp.ndim == 1 else fp
+        tv  = (np.zeros_like(pos) if target_vel is None
+               else (np.asarray(target_vel, float)[:, None]
+                     if np.ndim(target_vel) == 1 else np.asarray(target_vel, float)))
+        ep, ev = pos - fp, vel - tv
+        tt = self.timestamps[drone]
+
+        if landing_mask is not None:              # <-- SOLO la fase di landing
+            m = np.asarray(landing_mask, bool)
+            ep, ev, tt = ep[:, m], ev[:, m], tt[m]
+        Np = ep.shape[1]
+
+        def inside(H, h, e, v):
+            return np.all(H @ np.array([e, v]) <= h + tol)
+        in_x = np.array([inside(H_ax, h_ax, ep[0, k], ev[0, k]) for k in range(Np)])
+        in_y = np.array([inside(H_ax, h_ax, ep[1, k], ev[1, k]) for k in range(Np)])
+        in_z = np.array([inside(H_vz, h_vz, ep[2, k], ev[2, k]) for k in range(Np)])
+        in_all = in_x & in_y & in_z
+        entry = int(np.argmax(in_all)) if in_all.any() else None
+
+        panels = [("asse X", ep[0], ev[0], V_ax, "e_x [m]", "e_vx [m/s]"),
+                  ("asse Y", ep[1], ev[1], V_ax, "e_y [m]", "e_vy [m/s]"),
+                  ("asse Z", ep[2], ev[2], V_vz, "e_z [m]", "e_vz [m/s]")]
+        fig, axes = plt.subplots(1, 3, figsize=(16, 5.2))
+        for ax, (name, e, v, V, xl, yl) in zip(axes, panels):
+            Vc = np.vstack([V, V[0]])
+            ax.fill(Vc[:, 0], Vc[:, 1], color="tab:green", alpha=0.10, zorder=0)
+            ax.plot(Vc[:, 0], Vc[:, 1], color="tab:green", lw=1.6, zorder=1,
+                    label="set controllabile")
+            pts  = np.array([e, v]).T.reshape(-1, 1, 2)
+            segs = np.concatenate([pts[:-1], pts[1:]], axis=1)
+            lc = LineCollection(segs, cmap="plasma", zorder=2)
+            lc.set_array(tt[:-1]); lc.set_linewidth(2.0); ax.add_collection(lc)
+            ax.scatter(e[0], v[0], c="k", s=55, zorder=4, label="inizio landing")
+            if entry is not None:
+                ax.scatter(e[entry], v[entry], marker="*", s=280, c="red",
+                           edgecolor="k", zorder=5, label=f"gate t={tt[entry]:.2f}s")
+            xs = np.r_[Vc[:, 0], e]; ys = np.r_[Vc[:, 1], v]     # autoscale con la traiettoria
+            mx, my = 0.1*np.ptp(xs), 0.1*np.ptp(ys)
+            ax.set_xlim(xs.min()-mx, xs.max()+mx); ax.set_ylim(ys.min()-my, ys.max()+my)
+            ax.set_xlabel(xl); ax.set_ylabel(yl); ax.set_title(name)
+            ax.grid(alpha=.3); ax.axhline(0, color='k', lw=.4); ax.axvline(0, color='k', lw=.4)
+            ax.legend(fontsize=8, loc="best")
+        fig.colorbar(lc, ax=axes, fraction=0.025, pad=0.01).set_label("tempo [s] (landing)")
+        msg = f"gate a t={tt[entry]:.2f}s" if entry is not None else "gate mai attivo"
+        fig.suptitle(f"Stato-errore sul set controllabile — solo fase landing — {msg}")
+        if save: plt.savefig(save, dpi=110, bbox_inches="tight")
+        else:    plt.show()
+        return entry
+        
+        
+        
+        
+        
+        
+        

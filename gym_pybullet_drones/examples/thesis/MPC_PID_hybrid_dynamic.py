@@ -159,7 +159,9 @@ def run(drone=DEFAULT_DRONES,
         [3.5, 3.5, 1.8],                          # AIR TARGET
         [3.5, 3.5, 0.15]                          # LANDING
     ])
-
+    
+    landing_mask=[]
+    final_hist=[]
     NUM_WP = 4
     stop_delta = 0.1
     wp_counters = np.array([int((i*NUM_WP/6) % NUM_WP) for i in range(num_drones)])
@@ -261,7 +263,9 @@ def run(drone=DEFAULT_DRONES,
             pos_e[j] = WP_MISSION[wp_counters[j]] - obs[j][0:3]
 
             
-
+        landing_mask.append(states[0] == "landing")
+        final_hist.append(WP_MISSION[3].copy())
+        
         [states, wp_counters, old_wp_id, stop_delta] = update_state(
             pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta)
             
@@ -280,6 +284,8 @@ def run(drone=DEFAULT_DRONES,
                        pos_e=pos_e_plot,
                        p_LOS=p_los_arr[:],
                        control_type = control_type)
+                       
+        #logger.plot_reachable_entry(final_pos=WP_MISSION[3], landing_mask=logger.landing[0])
 
         env.render()
         if gui:
@@ -290,6 +296,9 @@ def run(drone=DEFAULT_DRONES,
     logger.save_as_csv("pid")
     if plot:
         logger.plot()
+        logger.plot_reachable_entry(final_pos=np.array(final_hist).T, target_vel=v_plat,
+                                 npz_path="reachable_polytope.npz", drone=0,
+                                 landing_mask=landing_mask)
 
 
 if __name__ == "__main__":

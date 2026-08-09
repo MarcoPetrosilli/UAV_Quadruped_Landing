@@ -144,9 +144,14 @@ def remove_redundant(H, h):
     return H[keep], h[keep]
 
 
+#def intersect(H1, h1, H2, h2):
+#    return remove_redundant(np.vstack([H1, h1 and H2]), np.concatenate([h1, h2])) \
+#        if False else remove_redundant(np.vstack([H1, H2]), np.concatenate([h1, h2]))
+
 def intersect(H1, h1, H2, h2):
-    return remove_redundant(np.vstack([H1, h1 and H2]), np.concatenate([h1, h2])) \
-        if False else remove_redundant(np.vstack([H1, H2]), np.concatenate([h1, h2]))
+    # H1,h1 = Pre-set (da sfoltire tra loro); H2,h2 = box di stato X (SEMPRE tenuto)
+    H1r, h1r = remove_redundant(H1, h1)
+    return np.vstack([H1r, H2]), np.concatenate([h1r, h2])
 
 
 def controllable_set(A, B, XH, Xh, UH, Uh, SH, Sh, N, tag=""):
@@ -214,10 +219,14 @@ def main():
                      "reachable_z.png", step=max(1, N_vrt // 15))
                      
     H_vz, h_vz = hist_v[-1]
+    
+    V_ax = ordered_vertices_2d(H_ax, h_ax)
+    V_vz = ordered_vertices_2d(H_vz, h_vz)
 
     np.savez("reachable_polytope.npz",
              H_ax=H_ax, h_ax=h_ax,          # per-axis horizontal set (2D)
              H_vz=H_vz, h_vz=h_vz,          # vertical set (2D)
+             V_ax=V_ax, V_vz=V_vz, 
              dt=dt, a_xy_lim=a_xy_lim, az_lim=az_lim, v_max=v_max,
              N_hrz=N_hrz, N_vrt=N_vrt)
     print("\nSaved reachable_polytope.npz")
