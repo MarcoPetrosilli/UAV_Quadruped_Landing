@@ -78,6 +78,19 @@ class MPCPIDHYControlDynamic(BaseControl):
         self.v_max = 1.0
         self.reach_margin = 0.85
 
+        # ---- Cone CBF (glideslope) parameters ------------------------------
+        # Admissibility cone in relative coords: the drone must stay ABOVE the
+        # cone surface  e_z >= alpha * sqrt(e_x^2 + e_y^2), i.e. the higher the
+        # horizontal offset from the platform, the higher it must fly. As it
+        # centres over the platform the cone narrows and lets it descend.
+        # h(x) = e_z - alpha*sqrt(e_x^2+e_y^2), enforced ONLY in landing via a
+        # discrete-CBF decrease condition  h_{k+1} >= (1-gamma_cbf) h_k, using
+        # the per-step radius r_k = alpha*sqrt(e_x_k^2+e_y_k^2) predicted by the
+        # horizontal MPC (so the vertical MPC decides if it may descend yet).
+        self.cbf_cone_enabled = True   # master switch
+        self.alpha_cone = 1.0          # cone slope (tan of half-angle); small = wide cone
+        self.gamma_cbf = 0.1           # CBF aggressiveness in (0,1)
+
         # ---- Multi-rate decimation + FOH (MPC mode only) -------------------
         self.MPC_FREQ_DIVIDER = 8
         self.last_mpc_thrust = 0.0
@@ -197,8 +210,18 @@ class MPCPIDHYControlDynamic(BaseControl):
         cur_x, cur_y, cur_z = cur_pos
         vx, vy, vz = cur_vel
 
-        phi_cmd, theta_cmd = self._mpc_horizontal(cur_x, cur_y, vx, vy, wp, a_xy_lim, target_vel)
-        az = self._mpc_vertical(cur_z, vz, wp)
+        phi_cmd, theta_cmd, x_hrz = self._mpc_horizontal(
+            cur_x, cur_y, vx, vy, wp, a_xy_lim, target_vel)
+
+        # feed the predicted horizontal trajectory into the vertical MPC so the
+        # cone-CBF radius r_k is known per step. The cone is armed here because
+        # this method only runs once the landing MPC is active. If the
+        # horizontal solve failed (x_hrz is None) the cone is skipped.
+        if x_hrz is not None:
+            x_pred, y_pred = x_hrz[0, :], x_hrz[1, :]
+            az = self._mpc_vertical(cur_z, vz, wp, target_vel, x_pred, y_pred, apply_cone=True)
+        else:
+            az = self._mpc_vertical(cur_z, vz, wp, target_vel)
 
         theta_corr = math.atan((9.81 / (9.81 + az)) * math.tan(theta_cmd))
         phi_corr = math.atan((math.cos(theta_corr) / math.cos(theta_cmd))
@@ -234,24 +257,46 @@ class MPCPIDHYControlDynamic(BaseControl):
         prob = cp.Problem(cp.Minimize(cost), cons)
         prob.solve(solver=cp.OSQP, warm_start=True)
         if u[:, 0].value is None:
-            return 0.0, 0.0
-        return float(u[0, 0].value), float(u[1, 0].value)
+            # solve failed: no command, and no predicted trajectory
+            return 0.0, 0.0, None
+        # also return the predicted horizontal trajectory (4 x N+1): the
+        # vertical MPC needs x_pred, y_pred to build the per-step cone radius.
+        return float(u[0, 0].value), float(u[1, 0].value), x.value
 
-    def _mpc_vertical(self, cur_z, cur_vz, wp):
+    def _mpc_vertical(self, cur_z, cur_vz, wp, target_vel, x_pred=None, y_pred=None,
+                      apply_cone=False):
         x = cp.Variable((2, self.N + 1))
         u = cp.Variable((1, self.N))
         xref = np.array([wp[2], 0.0])
+        z_plat = wp[2]                       # platform altitude = vertical target
+
+        # per-step cone radius from the predicted horizontal trajectory.
+        # r_k = alpha * sqrt((x_k - wp_x)^2 + (y_k - wp_y)^2)   (known numbers)
+        
+        use_cone = (apply_cone and self.cbf_cone_enabled
+                    and x_pred is not None and y_pred is not None)
+        if use_cone:
+            ex = np.asarray(x_pred) - (wp[0] + target_vel[0]*np.arange(self.N+1)*self.dt)
+            ey = np.asarray(y_pred) - (wp[1] + target_vel[1]*np.arange(self.N+1)*self.dt)
+            r = self.alpha_cone * np.sqrt(ex ** 2 + ey ** 2)   # length N+1
+
         cost = 0
         cons = [x[:, 0] == [cur_z, cur_vz]]
         for k in range(self.N):
             cost += cp.quad_form(x[:, k] - xref, self.Q_vrt)
             cost += cp.quad_form(u[:, k], self.R_vrt)
             cons += [x[:, k + 1] == self.A_vrt @ x[:, k] + self.B_vrt @ u[:, k]]
-            
-            #cons += [x[1, k]<=self.v_max]
-            #cons += [x[1, k]>=-self.v_max]
-            
             cons += [cp.abs(u[:, k]) <= 9.0]
+
+            if use_cone:
+                # discrete cone-CBF:  h_k = (z_k - z_plat) - r_k
+                #   enforce  h_{k+1} >= (1 - gamma) h_k
+                # linear in z (r_k are known), so the QP stays a QP; the
+                # dynamics constraint above ties it to the acceleration input.
+                h_k = (x[0, k] - z_plat) - r[k]
+                h_k1 = (x[0, k + 1] - z_plat) - r[k + 1]
+                cons += [h_k1 >= (1.0 - self.gamma_cbf) * h_k]
+
         cost += 10.0 * cp.quad_form(x[:, self.N] - xref, self.Q_vrt)
         prob = cp.Problem(cp.Minimize(cost), cons)
         prob.solve(solver=cp.OSQP, warm_start=True)

@@ -526,10 +526,81 @@ class Logger(object):
         if save: plt.savefig(save, dpi=110, bbox_inches="tight")
         else:    plt.show()
         return entry
-        
-        
-        
-        
-        
-        
-        
+
+    def plot_cone_landing(self, final_pos, alpha_cone=1.72, drone=0,
+                          landing_mask=None, save=None):
+        """Traiettoria 3D del drone nella fase di landing dentro il cono di
+        ammissibilita (glideslope), coerente col controllore.
+
+        Il cono e' la superficie  e_z = alpha_cone * sqrt(e_x^2 + e_y^2)  in
+        coordinate RELATIVE alla piattaforma: il drone deve restare SOPRA di
+        essa. Il centro del cono segue la piattaforma mobile, quindi final_pos
+        puo' essere:
+          - un punto (3,)            -> piattaforma ferma
+          - una traiettoria (3, T)   -> piattaforma mobile (es. np.array(final_hist).T)
+        Passare la stessa final_pos usata per plot_reachable_entry garantisce
+        che il cono disegnato coincida con quello imposto dall'MPC.
+        """
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d.art3d import Line3DCollection
+
+        pos = self.states[drone, 0:3, :]                    # 3 x T (x,y,z)
+        fp = np.asarray(final_pos, float)
+        fp = fp[:, None] if fp.ndim == 1 else fp            # broadcast a 3 x T
+        tt = self.timestamps[drone]
+
+        # errore relativo alla piattaforma (centro del cono = posizione piattaforma)
+        ep = pos - fp                                       # 3 x T
+
+        if landing_mask is not None:                        # solo fase landing
+            m = np.asarray(landing_mask, bool)
+            ep, tt = ep[:, m], tt[m]
+        Np = ep.shape[1]
+        if Np < 2:
+            print("[plot_cone_landing] pochi campioni di landing, niente plot")
+            return
+
+        ex, ey, ez = ep[0], ep[1], ep[2]
+        d_xy = np.sqrt(ex**2 + ey**2)
+        margin = ez - alpha_cone * d_xy                     # >0 dentro, <0 fuori
+        n_out = int(np.sum(margin < -1e-6))
+
+        fig = plt.figure(figsize=(11, 8))
+        ax = fig.add_subplot(111, projection="3d")
+
+        # ---- superficie del cono ----
+        r_max = float(np.nanmax(d_xy)) * 1.05 + 1e-6
+        rr = np.linspace(0, r_max, 30)
+        th = np.linspace(0, 2*np.pi, 40)
+        R, TH = np.meshgrid(rr, th)
+        Xc, Yc = R*np.cos(TH), R*np.sin(TH)
+        Zc = alpha_cone * R
+        ax.plot_surface(Xc, Yc, Zc, alpha=0.15, color="tab:green",
+                        linewidth=0, antialiased=True)
+        ax.plot_wireframe(Xc, Yc, Zc, color="tab:green", linewidth=0.4,
+                          rstride=4, cstride=4, alpha=0.5)
+
+        # ---- traiettoria reale colorata per tempo ----
+        pts = np.array([ex, ey, ez]).T.reshape(-1, 1, 3)
+        segs = np.concatenate([pts[:-1], pts[1:]], axis=1)
+        lc = Line3DCollection(segs, cmap="plasma", linewidth=2.5)
+        lc.set_array(tt[:-1])
+        ax.add_collection3d(lc)
+
+        ax.scatter(ex[0], ey[0], ez[0], c="k", s=60, label="inizio landing")
+        ax.scatter(ex[-1], ey[-1], ez[-1], marker="*", s=260, c="red",
+                   edgecolor="k", label="touchdown")
+
+        cbar = fig.colorbar(lc, ax=ax, fraction=0.03, pad=0.08)
+        cbar.set_label("tempo [s] (landing)")
+        ax.set_xlabel("e_x [m]"); ax.set_ylabel("e_y [m]"); ax.set_zlabel("e_z [m]")
+        status = "DENTRO il cono" if n_out == 0 else f"{n_out}/{Np} campioni FUORI"
+        ax.set_title(f"Traiettoria di landing nel cono (alpha={alpha_cone}) — {status}")
+        ax.legend(loc="upper left")
+        ax.view_init(elev=18, azim=-60)
+        if save:
+            plt.savefig(save, dpi=110, bbox_inches="tight")
+        else:
+            plt.show()
+        return n_out

@@ -299,6 +299,9 @@ def run(drone=DEFAULT_DRONES,
         logger.plot_reachable_entry(final_pos=np.array(final_hist).T, target_vel=v_plat,
                                  npz_path="reachable_polytope.npz", drone=0,
                                  landing_mask=landing_mask)
+        logger.plot_cone_landing(final_pos=np.array(final_hist).T,
+                                 alpha_cone=1.0, drone=0,
+                                 landing_mask=landing_mask)
 
 
 if __name__ == "__main__":
