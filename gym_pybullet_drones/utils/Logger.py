@@ -507,10 +507,22 @@ class Logger(object):
             ax.set_xlim(xs.min()-mx, xs.max()+mx); ax.set_ylim(ys.min()-my, ys.max()+my)
             ax.set_xlabel(xl); ax.set_ylabel(yl); ax.set_title(name)
             ax.grid(alpha=.3); ax.axhline(0, color='k', lw=.4); ax.axvline(0, color='k', lw=.4)
-            ax.legend(fontsize=8, loc="best")
-        fig.colorbar(lc, ax=axes, fraction=0.025, pad=0.01).set_label("tempo [s] (landing)")
+        # 1. Crea la colorbar (leggermente più staccata dai grafici con pad=0.02)
+        fig.colorbar(lc, ax=axes, fraction=0.025, pad=0.02).set_label("tempo [s] (landing)")
+        
+        # 2. Imposta il titolo generale
         msg = f"gate a t={tt[entry]:.2f}s" if entry is not None else "gate mai attivo"
         fig.suptitle(f"Stato-errore sul set controllabile — solo fase landing — {msg}")
+        
+        # 3. Recupera la legenda solo dal primo asse per evitare le triplicazioni
+        handles, labels = axes[0].get_legend_handles_labels()
+        
+        # 4. Aggiusta i margini globali: 
+        # left=0.15 lascia spazio alla legenda, right=0.88 lascia spazio alla colorbar
+        fig.subplots_adjust(left=0.15, right=0.88) 
+        
+        # 5. Disegna la legenda nello spazio vuoto a sinistra
+        fig.legend(handles, labels, loc="center left", bbox_to_anchor=(0.01, 0.5), frameon=True, fontsize=9)
         if save: plt.savefig(save, dpi=110, bbox_inches="tight")
         else:    plt.show()
         return entry

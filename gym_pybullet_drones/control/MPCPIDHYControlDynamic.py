@@ -223,6 +223,12 @@ class MPCPIDHYControlDynamic(BaseControl):
             cost += cp.quad_form(x[:, k] - xref, self.Q_hrz)
             cost += cp.quad_form(u[:, k], self.R_hrz)
             cons += [x[:, k + 1] == self.A_hrz @ x[:, k] + self.B_hrz @ u[:, k]]
+            
+            #cons += [x[2, k]<=self.v_max]
+            #cons += [x[2, k]>=-self.v_max]
+            #cons += [x[3, k]<=self.v_max]
+            #cons += [x[3, k]>=-self.v_max]
+            
             cons += [cp.abs(u[:, k]) <= a_xy_lim]
         cost += 10.0 * cp.quad_form(x[:, self.N] - xref, self.Q_hrz)
         prob = cp.Problem(cp.Minimize(cost), cons)
@@ -241,6 +247,10 @@ class MPCPIDHYControlDynamic(BaseControl):
             cost += cp.quad_form(x[:, k] - xref, self.Q_vrt)
             cost += cp.quad_form(u[:, k], self.R_vrt)
             cons += [x[:, k + 1] == self.A_vrt @ x[:, k] + self.B_vrt @ u[:, k]]
+            
+            #cons += [x[1, k]<=self.v_max]
+            #cons += [x[1, k]>=-self.v_max]
+            
             cons += [cp.abs(u[:, k]) <= 9.0]
         cost += 10.0 * cp.quad_form(x[:, self.N] - xref, self.Q_vrt)
         prob = cp.Problem(cp.Minimize(cost), cons)
