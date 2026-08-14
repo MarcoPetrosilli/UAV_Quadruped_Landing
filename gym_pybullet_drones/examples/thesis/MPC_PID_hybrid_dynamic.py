@@ -49,9 +49,36 @@ def initialize_state(num_drones, states, wp_counters):
     return states, wp_counters
 
 
-def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
+def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta,
+                 drone_pos=None, plat_pos=None, z_hold=1.8, alpha_cone=1.0):
+    """FSM di missione.
+
+    Transizioni:
+      rising     -> nav_to_wp   (distanza dal wp rising < stop_delta)
+      nav_to_wp  -> hold        (distanza dal wp nav    < stop_delta)
+      hold       -> landing     (dentro il cono: d_xy <= z_hold/alpha_cone)
+      landing    -> idle        (distanza dal wp landing < stop_delta)
+
+    Lo stato 'hold' insegue la xy del target tenendo la quota, e fa scattare il
+    landing solo quando il drone e' dentro l'imbuto del cono sopra il target,
+    cosi la manovra MPC parte gia' ammissibile invece che da un punto arbitrario.
+    """
     for j in range(num_drones):
         distance = np.linalg.norm(pos_e[j])
+
+        if states[j] == "hold":
+            # condizione geometrica del cono, non distanza da un waypoint:
+            # entra in landing quando la distanza orizzontale dal target sta
+            # dentro il raggio del cono alla quota tenuta.
+            if drone_pos is not None and plat_pos is not None:
+                d_xy = np.linalg.norm(np.asarray(plat_pos[0:2]) - np.asarray(drone_pos[j][0:2]))
+                if d_xy <= z_hold / alpha_cone:
+                    states[j] = "landing"
+                    old_wp_id = 3
+                    wp_counters[j] = 4
+                    stop_delta = 0.1
+            continue
+
         if distance <= stop_delta:
             if states[j] == "rising":
                 states[j] = "nav_to_wp"
@@ -59,13 +86,13 @@ def update_state(pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta):
                 wp_counters[j] = 2
                 stop_delta = 0.3
             elif states[j] == "nav_to_wp":
-                states[j] = "landing"
+                states[j] = "hold"
                 old_wp_id = 2
                 wp_counters[j] = 3
-                stop_delta = 0.1
-            else:
+                stop_delta = 0.3
+            elif states[j] == "landing":
                 states[j] = "idle"
-                old_wp_id = 3
+                old_wp_id = 4
                 wp_counters[j] = 0
     return states, wp_counters, old_wp_id, stop_delta
 
@@ -154,15 +181,20 @@ def run(drone=DEFAULT_DRONES,
     w_plat = [0.0, 0.0, 0.0]
 
     WP_MISSION = np.array([
-        starting_pos,                             # IDLE
-        [starting_pos[0], starting_pos[1], 1.8],  # RISING
-        [3.5, 3.5, 1.8],                          # AIR TARGET
-        [3.5, 3.5, 0.15]                          # LANDING
+        starting_pos,                             # 0: IDLE
+        [starting_pos[0], starting_pos[1], 1.8],  # 1: RISING
+        [0.0, 3.5, 1.8],                          # 2: NAV (avvicinamento grezzo, spostato)
+        [3.5, 3.5, 1.8],                          # 3: HOLD (insegue xy target, quota tenuta)
+        [3.5, 3.5, 0.15]                          # 4: LANDING
     ])
-    
+
+    # ---- cone / hold parameters (must match the controller) ----
+    Z_HOLD = 1.8          # quota tenuta durante l'hold
+    ALPHA_CONE = 1.0      # pendenza del cono: DEVE combaciare con self.alpha_cone
+
     landing_mask=[]
     final_hist=[]
-    NUM_WP = 4
+    NUM_WP = 5
     stop_delta = 0.1
     wp_counters = np.array([int((i*NUM_WP/6) % NUM_WP) for i in range(num_drones)])
     old_wp_id = 0
@@ -213,8 +245,9 @@ def run(drone=DEFAULT_DRONES,
         plat_pos, plat_quat = p.getBasePositionAndOrientation(
             env.PLATFORM_ID, physicsClientId=PYB_CLIENT)
 	
-        #WP_MISSION[2] = [plat_pos[0], plat_pos[1], 1.8]
-        WP_MISSION[3] = [plat_pos[0], plat_pos[1], 0.15]
+        # hold e landing seguono la piattaforma mobile; nav resta fisso
+        WP_MISSION[3] = [plat_pos[0], plat_pos[1], Z_HOLD]   # HOLD: xy target, quota tenuta
+        WP_MISSION[4] = [plat_pos[0], plat_pos[1], 0.15]     # LANDING: xy target, giu
 
         #### Compute control ###########################################
         for j in range(num_drones):
@@ -222,21 +255,20 @@ def run(drone=DEFAULT_DRONES,
 
             if states[j] == "idle":
                 pos_e_plot = np.zeros(3)
-                p_LOS = WP_MISSION[3]
+                p_LOS = WP_MISSION[4]
             else:
-                pos_e_plot = WP_MISSION[3] - actual_pt
+                pos_e_plot = WP_MISSION[4] - actual_pt
 
                 # per-phase tilt authority (kept from your tuning)
-                if wp_counters[j] == 3:      # landing
+                if wp_counters[j] == 4:      # landing
                     a_xy = 0.17
                     los_delta = 0.3
                     target_v = v_plat
-                elif wp_counters[j] == 2:                        # rising / nav_to_wp
+                elif wp_counters[j] == 3:    # hold: insegue xy target, quota tenuta
                     a_xy = 0.17
                     los_delta = 0.3
-                    target_v = np.zeros(3)
-                    #target_v = v_plat
-                else:
+                    target_v = v_plat        # feedforward: segue il target mobile
+                else:                        # rising / nav_to_wp
                     a_xy = 0.17
                     los_delta = 0.3
                     target_v = np.zeros(3)
@@ -257,20 +289,22 @@ def run(drone=DEFAULT_DRONES,
                     target_vel=target_v,    
                     target_rpy_rates=np.zeros(3),
                     a_xy_lim=a_xy,
-                    final_pos=WP_MISSION[3],
+                    final_pos=WP_MISSION[4],
                     landing = landing)
 
             pos_e[j] = WP_MISSION[wp_counters[j]] - obs[j][0:3]
 
             
         landing_mask.append(states[0] == "landing")
-        final_hist.append(WP_MISSION[3].copy())
+        final_hist.append(WP_MISSION[4].copy())
         
         [states, wp_counters, old_wp_id, stop_delta] = update_state(
-            pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta)
-            
-        if old_wp_id == 3 and wp_counters[j] == 0:
-                WP_MISSION[0] = WP_MISSION[3]
+            pos_e, num_drones, states, wp_counters, old_wp_id, stop_delta,
+            drone_pos=obs[:, 0:3], plat_pos=plat_pos,
+            z_hold=Z_HOLD, alpha_cone=ALPHA_CONE)
+
+        if old_wp_id == 4 and wp_counters[j] == 0:
+                WP_MISSION[0] = WP_MISSION[4]
                 action[j, :] = np.zeros(4)
 
         #### Log #######################################################
@@ -285,7 +319,7 @@ def run(drone=DEFAULT_DRONES,
                        p_LOS=p_los_arr[:],
                        control_type = control_type)
                        
-        #logger.plot_reachable_entry(final_pos=WP_MISSION[3], landing_mask=logger.landing[0])
+        #logger.plot_reachable_entry(final_pos=WP_MISSION[4], landing_mask=logger.landing[0])
 
         env.render()
         if gui:
@@ -300,7 +334,7 @@ def run(drone=DEFAULT_DRONES,
                                  npz_path="reachable_polytope.npz", drone=0,
                                  landing_mask=landing_mask)
         logger.plot_cone_landing(final_pos=np.array(final_hist).T,
-                                 alpha_cone=1.0, drone=0,
+                                 alpha_cone=0.6, z_cut=1.0, drone=0,
                                  landing_mask=landing_mask)
 
 

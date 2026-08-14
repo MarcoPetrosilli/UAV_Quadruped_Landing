@@ -88,8 +88,9 @@ class MPCPIDHYControlDynamic(BaseControl):
         # the per-step radius r_k = alpha*sqrt(e_x_k^2+e_y_k^2) predicted by the
         # horizontal MPC (so the vertical MPC decides if it may descend yet).
         self.cbf_cone_enabled = True   # master switch
-        self.alpha_cone = 1.0          # cone slope (tan of half-angle); small = wide cone
-        self.gamma_cbf = 0.3           # CBF aggressiveness in (0,1)
+        self.alpha_cone = 0.6          # cone slope (tan of half-angle); small = wide cone
+        self.gamma_cbf = 0.1           # CBF aggressiveness in (0,1)
+        self.z_cut = 1.0
 
         # ---- Multi-rate decimation + FOH (MPC mode only) -------------------
         self.MPC_FREQ_DIVIDER = 8
@@ -271,7 +272,7 @@ class MPCPIDHYControlDynamic(BaseControl):
         z_plat = wp[2]                       # platform altitude = vertical target
 
         # per-step cone radius from the predicted horizontal trajectory.
-        # r_k = alpha * sqrt((x_k - wp_x)^2 + (y_k - wp_y)^2)   (known numbers)
+        #r_k = alpha * sqrt((x_k - wp_x)^2 + (y_k - wp_y)^2)   (known numbers)
         
         use_cone = (apply_cone and self.cbf_cone_enabled
                     and x_pred is not None and y_pred is not None)
@@ -279,6 +280,7 @@ class MPCPIDHYControlDynamic(BaseControl):
             ex = np.asarray(x_pred) - (wp[0] + target_vel[0]*np.arange(self.N+1)*self.dt)
             ey = np.asarray(y_pred) - (wp[1] + target_vel[1]*np.arange(self.N+1)*self.dt)
             r = self.alpha_cone * np.sqrt(ex ** 2 + ey ** 2)   # length N+1
+            r = np.minimum(r, self.z_cut)
 
         cost = 0
         cons = [x[:, 0] == [cur_z, cur_vz]]
