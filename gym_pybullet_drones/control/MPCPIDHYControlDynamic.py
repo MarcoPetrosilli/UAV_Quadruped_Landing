@@ -89,7 +89,7 @@ class MPCPIDHYControlDynamic(BaseControl):
         # horizontal MPC (so the vertical MPC decides if it may descend yet).
         self.cbf_cone_enabled = True   # master switch
         self.alpha_cone = 1.0          # cone slope (tan of half-angle); small = wide cone
-        self.gamma_cbf = 0.1           # CBF aggressiveness in (0,1)
+        self.gamma_cbf = 0.3           # CBF aggressiveness in (0,1)
 
         # ---- Multi-rate decimation + FOH (MPC mode only) -------------------
         self.MPC_FREQ_DIVIDER = 8
