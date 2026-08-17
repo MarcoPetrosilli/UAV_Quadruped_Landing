@@ -88,9 +88,10 @@ class MPCPIDHYControlDynamic(BaseControl):
         # the per-step radius r_k = alpha*sqrt(e_x_k^2+e_y_k^2) predicted by the
         # horizontal MPC (so the vertical MPC decides if it may descend yet).
         self.cbf_cone_enabled = True   # master switch
-        self.alpha_cone = 0.6          # cone slope (tan of half-angle); small = wide cone
+        self.alpha_cone = 1.72          # cone slope (tan of half-angle); small = wide cone
         self.gamma_cbf = 0.1           # CBF aggressiveness in (0,1)
         self.z_cut = 1.0
+        self.r_base = 0.1
 
         # ---- Multi-rate decimation + FOH (MPC mode only) -------------------
         self.MPC_FREQ_DIVIDER = 8
@@ -279,7 +280,7 @@ class MPCPIDHYControlDynamic(BaseControl):
         if use_cone:
             ex = np.asarray(x_pred) - (wp[0] + target_vel[0]*np.arange(self.N+1)*self.dt)
             ey = np.asarray(y_pred) - (wp[1] + target_vel[1]*np.arange(self.N+1)*self.dt)
-            r = self.alpha_cone * np.sqrt(ex ** 2 + ey ** 2)   # length N+1
+            r = self.alpha_cone * np.maximum(0,np.sqrt(ex ** 2 + ey ** 2)-self.r_base)   # length N+1
             r = np.minimum(r, self.z_cut)
 
         cost = 0
@@ -291,11 +292,7 @@ class MPCPIDHYControlDynamic(BaseControl):
             cons += [cp.abs(u[:, k]) <= 9.0]
 
             if use_cone:
-                # discrete cone-CBF:  h_k = (z_k - z_plat) - r_k
-                #   enforce  h_{k+1} >= (1 - gamma) h_k
-                # linear in z (r_k are known), so the QP stays a QP; the
-                # dynamics constraint above ties it to the acceleration input.
-                h_k = (x[0, k] - z_plat) - r[k]
+                h_k = (x[0, k] - z_plat) - r[k]    #e_z_drone - z_lim_error
                 h_k1 = (x[0, k + 1] - z_plat) - r[k + 1]
                 cons += [h_k1 >= (1.0 - self.gamma_cbf) * h_k]
 

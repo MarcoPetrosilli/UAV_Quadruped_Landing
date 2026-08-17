@@ -527,7 +527,7 @@ class Logger(object):
         else:    plt.show()
         return entry
 
-    def plot_cone_landing(self, final_pos, alpha_cone=1.72, z_cut=1.0, drone=0,
+    def plot_cone_landing(self, final_pos, alpha_cone=1.72, z_cut=1.0, r_base = 0.1, drone=0,
                           landing_mask=None, save=None):
         """Traiettoria 3D del drone nella fase di landing dentro il cono di
         ammissibilita (glideslope), coerente col controllore.
@@ -575,7 +575,7 @@ class Logger(object):
         th = np.linspace(0, 2*np.pi, 40)
         R, TH = np.meshgrid(rr, th)
         Xc, Yc = R*np.cos(TH), R*np.sin(TH)
-        Zc = alpha_cone * R
+        Zc = alpha_cone *np.maximum(0,R - r_base)
         Zc = np.minimum(Zc, z_cut)
         ax.plot_surface(Xc, Yc, Zc, alpha=0.15, color="tab:green",
                         linewidth=0, antialiased=True)
