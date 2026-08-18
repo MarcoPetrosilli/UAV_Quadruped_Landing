@@ -88,7 +88,8 @@ class MPCPIDHYControlDynamic(BaseControl):
         # the per-step radius r_k = alpha*sqrt(e_x_k^2+e_y_k^2) predicted by the
         # horizontal MPC (so the vertical MPC decides if it may descend yet).
         self.cbf_cone_enabled = True   # master switch
-        self.alpha_cone = 1.72          # cone slope (tan of half-angle); small = wide cone
+        #self.alpha_cone = 1.72          # cone slope (tan of half-angle); small = wide cone
+        self.alpha_cone = 1.72
         self.gamma_cbf = 0.1           # CBF aggressiveness in (0,1)
         self.z_cut = 1.0
         self.r_base = 0.1
