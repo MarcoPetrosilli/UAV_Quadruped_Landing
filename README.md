@@ -1,5 +1,4 @@
-# UAV Quadruped Landing
-<h1 align="center">🚁 UAV Quadruped Landing Control</h1>
+<h1 align="center"> UAV Dynamic Landing Control</h1>
 
 <p align="center">
   <img src="https://img.shields.io/badge/conda-env-green.svg" alt="Conda">
