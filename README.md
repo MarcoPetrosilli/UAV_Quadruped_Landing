@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/simulation-PyBullet-orange.svg" alt="Simulation">
 </p>
 
-> **Overview:** This document provides instructions on how to set up the Conda virtual environment required to run the control nodes (MPC + CBF) and the 3D physics simulations.
+> **Overview:** This document provides instructions on how to set up the Conda virtual environment required to run the control and the 3D physics simulations.
 
 ---
 
