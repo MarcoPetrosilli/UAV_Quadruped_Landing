@@ -51,25 +51,25 @@ pip install gym-pybullet-drones pybullet gymnasium
 conda deactivate
 ```
 
-## 4. Launching the Simulation
+## 5. Launching the Simulation
 
 ```bash
 cd gym_pybullet_drones/examples/thesis/
 
 python MPC_PID_hybrid_dynamic.py 
 ```
-This is the current version of the simulation, which relies on the control implementation that can be found at:
+This is the current version of the simulation, which relies on the control law implementation that can be found at:
 
 ```bash
-cd gym_pybullet_drones/control/MPCPIDHYControlDynamic.py.
+gym_pybullet_drones/control/MPCPIDHYControlDynamic.py.
 ```
   
 
-The others that can be found in the folder are old versions of the control, such as:
+The other files that can be found under the folder example/thesis are old versions of the control, such as:
 
 | File | Description |
 | :--- | :--- |
-| **`control_to_wp.py`** | Pure PID control |
+| **`control_to_wp.py//`** | Pure PID control |
 | **`LOS_to_wp.py`** | PID control implementing LOS (Line of Sight) approach |
 | **`MPC_Position.py`** | MPC for the entire mission |
 
