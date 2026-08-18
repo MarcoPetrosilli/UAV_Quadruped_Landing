@@ -32,7 +32,25 @@ conda activate drones
 conda install -c conda-forge numpy scipy cvxpy osqp matplotlib -y
 
 - 2. Install 3D simulation frameworks via pip
-pip install gym-pybullet-drones pybullet gymnasium
+pip install pybullet gymnasium
+```
+
+
+## 4. Install the local gym-pybullet-drones package
+
+Since gym_pybullet_drones is included directly in this repository, install it in editable mode from the project root:
+
+```bash
+pip install "setuptools<81"
+
+pip install -e .
+```
+The editable installation allows modifications to the gym_pybullet_drones source code to be immediately reflected when running the examples and experiments.
+
+## 5. Verify the installation
+
+```bash
+python -c "import pybullet, gymnasium, gym_pybullet_drones; print('Installation successful')"
 ```
 
 ## Packages Details
@@ -44,13 +62,7 @@ pip install gym-pybullet-drones pybullet gymnasium
 | **`matplotlib`** | Plotting trajectories and visually debugging the controller behavior. |
 | **`gym-pybullet-drones`**, **`pybullet`** & **`gymnasium`** | The 3D physics engine and simulation framework required for testing the drone landing algorithms. |
 
-## 4. Deactivation
-
-```bash
-conda deactivate
-```
-
-## 5. Launching the Simulation
+## 6. Launching the Simulation
 
 ```bash
 cd gym_pybullet_drones/examples/thesis/
@@ -71,6 +83,12 @@ The other files that can be found under the folder example/thesis are old versio
 | **`control_to_wp.py//`** | Pure PID control |
 | **`LOS_to_wp.py`** | PID control implementing LOS (Line of Sight) approach |
 | **`MPC_Position.py`** | MPC for the entire mission |
+
+## 7. Deactivation
+
+```bash
+conda deactivate
+```
 
 
 
