@@ -28,7 +28,7 @@ class HybridController:
         self.dt = dt
         self.M = mass
         self.GRAVITY = mass * g
-        self.N = 20
+        self.N = 70
 
         # ---- MPC prediction models (identici al sim) -----------------------
         self.A_hrz = np.array([[1, 0, dt, 0],
@@ -61,7 +61,7 @@ class HybridController:
         self.r_base = 0.1
 
         # ---- multi-rate decimation -----------------------------------------
-        self.MPC_FREQ_DIVIDER = 1
+        self.MPC_FREQ_DIVIDER = 2
         self.control_counter = 0
         self.mpc_step = 0
         self.mpc_activated = False
@@ -87,14 +87,15 @@ class HybridController:
         self.p_xref_hrz = cp.Parameter((4, self.N + 1))
         self.p_axy_lim = cp.Parameter(nonneg=True)
 
+        wQh=np.sqrt(np.diag(self.Q_hrz)); wRh=np.sqrt(np.diag(self.R_hrz)); wQhT=np.sqrt(10.0)*wQh
         cost_hrz = 0
         cons_hrz = [self.x_hrz[:, 0] == self.p_cur_hrz]
         for k in range(self.N):
-            cost_hrz += cp.quad_form(self.x_hrz[:, k] - self.p_xref_hrz[:, k], self.Q_hrz)
-            cost_hrz += cp.quad_form(self.u_hrz[:, k], self.R_hrz)
+            cost_hrz += cp.sum_squares(cp.multiply(wQh, self.x_hrz[:, k] - self.p_xref_hrz[:, k]))
+            cost_hrz += cp.sum_squares(cp.multiply(wRh, self.u_hrz[:, k]))
             cons_hrz += [self.x_hrz[:, k + 1] == self.A_hrz @ self.x_hrz[:, k] + self.B_hrz @ self.u_hrz[:, k]]
             cons_hrz += [cp.abs(self.u_hrz[:, k]) <= self.p_axy_lim]
-        cost_hrz += 10.0 * cp.quad_form(self.x_hrz[:, self.N] - self.p_xref_hrz[:, self.N], self.Q_hrz)
+        cost_hrz += cp.sum_squares(cp.multiply(wQhT, self.x_hrz[:, self.N] - self.p_xref_hrz[:, self.N]))
         self.prob_hrz = cp.Problem(cp.Minimize(cost_hrz), cons_hrz)
 
         # --- 2. VERTICAL PROBLEM (Unificato con Cono CBF) ---
@@ -105,11 +106,12 @@ class HybridController:
         self.p_z_plat = cp.Parameter()
         self.p_r_cone = cp.Parameter(self.N + 1)
 
+        wQv=np.sqrt(np.diag(self.Q_vrt)); wRv=np.sqrt(np.diag(self.R_vrt)); wQvT=np.sqrt(10.0)*wQv
         cost_vrt = 0
         cons_vrt = [self.x_vrt[:, 0] == self.p_cur_vrt]
         for k in range(self.N):
-            cost_vrt += cp.quad_form(self.x_vrt[:, k] - self.p_xref_vrt, self.Q_vrt)
-            cost_vrt += cp.quad_form(self.u_vrt[:, k], self.R_vrt)
+            cost_vrt += cp.sum_squares(cp.multiply(wQv, self.x_vrt[:, k] - self.p_xref_vrt))
+            cost_vrt += cp.sum_squares(cp.multiply(wRv, self.u_vrt[:, k]))
             cons_vrt += [self.x_vrt[:, k + 1] == self.A_vrt @ self.x_vrt[:, k] + self.B_vrt @ self.u_vrt[:, k]]
             cons_vrt += [cp.abs(self.u_vrt[:, k]) <= 9.0]
             
@@ -118,7 +120,7 @@ class HybridController:
             h_k1 = (self.x_vrt[0, k + 1] - self.p_z_plat) - self.p_r_cone[k + 1]
             cons_vrt += [h_k1 >= (1.0 - self.gamma_cbf) * h_k]
             
-        cost_vrt += 10.0 * cp.quad_form(self.x_vrt[:, self.N] - self.p_xref_vrt, self.Q_vrt)
+        cost_vrt += cp.sum_squares(cp.multiply(wQvT, self.x_vrt[:, self.N] - self.p_xref_vrt))
         self.prob_vrt = cp.Problem(cp.Minimize(cost_vrt), cons_vrt)
 
     # ==================================================================== #
@@ -176,7 +178,7 @@ class HybridController:
 
         force = self.M * (self.g + az)
         
-        # Invertito theta_corr per adattamento al firmware Crazyflie
+        # NB segni: se il drone si inclina al contrario, invertire qui (scipy vs cflib). Ora NON invertiti.
         return force, np.array([phi_corr, theta_corr, target_yaw])
 
     def _pid_reach(self, cur_pos, cur_vel, target_pos, target_yaw, target_vel):
@@ -234,7 +236,9 @@ class HybridController:
                                        target_vel[0], target_vel[1]])
         self.p_xref_hrz.value = xref_mat
 
-        self.prob_hrz.solve(solver=cp.OSQP, warm_start=True, max_iter=4000, eps_abs=1e-4, eps_rel=1e-4)
+        # The max_iter value was 4000 before
+
+        self.prob_hrz.solve(solver=cp.OSQP, warm_start=True, max_iter=5000, eps_abs=1e-3, eps_rel=1e-3)
 
         if self.u_hrz[:, 0].value is None:
             return 0.0, 0.0, None
@@ -256,7 +260,9 @@ class HybridController:
             # Vincolo CBF disattivato matematicamente
             self.p_r_cone.value = np.full(self.N + 1, -1000.0)
 
-        self.prob_vrt.solve(solver=cp.OSQP, warm_start=True, max_iter=4000, eps_abs=1e-4, eps_rel=1e-4)
+        # The max_iter value was 4000 before
+
+        self.prob_vrt.solve(solver=cp.OSQP, warm_start=True, max_iter=5000, eps_abs=1e-3, eps_rel=1e-3)
         
         if self.u_vrt[0, 0].value is None:
             return 0.0

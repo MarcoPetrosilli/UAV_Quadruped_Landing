@@ -182,7 +182,7 @@ def main():
     XH, Xh = box([pos_max, v_max])
     UH, Uh = box([a_xy_lim])
     SH, Sh = box([0.10, 0.10])     # terminal "captured" box (rel. pos & vel)
-    N_hrz = 80
+    N_hrz = 70
 
     print("Horizontal per-axis controllable set:")
     #H_ax, h_ax = controllable_set(A_ax, B_ax, XH, Xh, UH, Uh, SH, Sh, N_hrz, "hrz")
@@ -207,7 +207,7 @@ def main():
     XHv, Xhv = box([pos_max, v_max])
     UHv, Uhv = box([az_lim])
     SHv, Shv = box([0.10, 0.10])
-    N_vrt = 80
+    N_vrt = 70
 
     print("Vertical controllable set:")
     #H_vz, h_vz = controllable_set(A_vz, B_vz, XHv, Xhv, UHv, Uhv, SHv, Shv, N_vrt, "vrt")
