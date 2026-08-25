@@ -55,7 +55,9 @@ class HybridController:
 
         # ---- Cone CBF (glideslope) -----------------------------------------
         self.cbf_cone_enabled = True
-        self.alpha_cone = 1.72
+        #self.alpha_cone = 1.72
+
+        self.alpha_cone = 1.0
         self.gamma_cbf = 0.1
         self.z_cut = 1.0
         self.r_base = 0.1

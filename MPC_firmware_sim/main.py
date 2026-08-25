@@ -87,9 +87,9 @@ def save_and_plot(rows):
     if not rows:
         print("nessun dato da plottare"); return
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = f"flight_{stamp}.csv"
+    csv_path = f"last_run_plots/flight_{stamp}.csv"
     cols = ["t", "state", "mode", "x", "y", "z", "vx", "vy", "vz",
-            "carrot_z", "force", "cmd", "az", "solve_ms"]
+            "carrot_x", "carrot_y", "carrot_z", "force", "cmd", "az", "solve_ms"]
     with open(csv_path, "w", newline="") as f:
         w = csv.writer(f); w.writerow(cols)
         for r in rows:
@@ -113,7 +113,7 @@ def save_and_plot(rows):
     except Exception as e:
         print("matplotlib non disponibile:", e); return
 
-    fig, ax = plt.subplots(4, 1, sharex=True, figsize=(11, 9))
+    fig, ax = plt.subplots(6, 1, sharex=True, figsize=(11, 9))
 
     def shade_mpc(axis):
         on = mode > 0.5
@@ -142,6 +142,16 @@ def save_and_plot(rows):
     ax[3].plot(t, a["az"], color="tab:purple"); ax[3].axhline(0, color="k", lw=0.6)
     ax[3].set_ylabel("az [m/s^2]"); ax[3].set_xlabel("t [s]"); shade_mpc(ax[3])
 
+    ax[4].plot(t, a["x"], label="x", lw=1.5)
+    ax[4].plot(t, a["carrot_x"], label="carrot_x", lw=1, ls="--")
+    ax[4].axhline(3.5, color="k", lw=0.8, ls=":", label="target land")
+    ax[4].set_ylabel("x [m]"); ax[4].legend(loc="upper right"); shade_mpc(ax[0])
+
+    ax[5].plot(t, a["y"], label="x", lw=1.5)
+    ax[5].plot(t, a["carrot_y"], label="carrot_y", lw=1, ls="--")
+    ax[5].axhline(3.5, color="k", lw=0.8, ls=":", label="target land")
+    ax[5].set_ylabel("y [m]"); ax[5].legend(loc="upper right"); shade_mpc(ax[0])
+
     sw = np.where(np.diff(mode) > 0.5)[0]
     for s in sw:
         for axi in ax:
@@ -149,8 +159,177 @@ def save_and_plot(rows):
 
     fig.suptitle("Volo CrazySim — zona arancione = MPC attivo")
     fig.tight_layout()
-    png = f"flight_{stamp}.png"; fig.savefig(png, dpi=110)
+    png = f"last_run_plots/flight_{stamp}.png"; fig.savefig(png, dpi=110)
     print(f"plot salvato: {png}")
+    plt.show()
+
+    return stamp
+
+def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.0, z_cut=1.0, r_base=0.1, polytope_path="reachable_polytope.npz"):
+    import numpy as np
+    import os
+    from datetime import datetime
+    
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.collections import LineCollection
+        from mpl_toolkits.mplot3d.art3d import Line3DCollection
+    except ImportError:
+        print("Matplotlib non disponibile per i plot avanzati.")
+        return
+
+    if not rows:
+        return
+
+    # Genera un timestamp se non viene passato
+    if stamp is None:
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+    # Crea la cartella se non esiste
+    save_dir = "last_run_plots"
+    os.makedirs(save_dir, exist_ok=True)
+
+    # 1. Estrazione dati dal dizionario
+    t = np.array([r["t"] for r in rows])
+    pos = np.array([[r["x"], r["y"], r["z"]] for r in rows]).T
+    vel = np.array([[r["vx"], r["vy"], r["vz"]] for r in rows]).T
+    los = np.array([[r["carrot_x"], r["carrot_y"], r["carrot_z"]] for r in rows]).T
+    state_str = np.array([r["state"] for r in rows])
+    
+    landing_mask = (state_str == "landing")
+    fp = np.array([target_xy[0], target_xy[1], z_land])
+
+    # =====================================================================
+    # PLOT 1: Traiettoria 3D e 2D (Reale vs LOS)
+    # =====================================================================
+    fig3d = plt.figure(figsize=(10, 8))
+    ax3d = fig3d.add_subplot(111, projection='3d')
+    fig2d = plt.figure(figsize=(10, 8))
+    ax2d = fig2d.add_subplot(111)
+
+    # 3D
+    ax3d.plot(pos[0], pos[1], pos[2], label="Trajectory", color='b', linewidth=2)
+    ax3d.plot(los[0], los[1], los[2], label="LOS Target", color='g', linestyle='--', linewidth=1.5)
+    step_size = max(1, int(pos.shape[1] / 50))
+    ax3d.quiver(pos[0, ::step_size], pos[1, ::step_size], pos[2, ::step_size],
+                los[0, ::step_size] - pos[0, ::step_size],
+                los[1, ::step_size] - pos[1, ::step_size],
+                los[2, ::step_size] - pos[2, ::step_size],
+                color='r', alpha=0.6, arrow_length_ratio=0.15, linewidth=1.5, label="Error Vector")
+    ax3d.set_xlabel('X [m]'); ax3d.set_ylabel('Y [m]'); ax3d.set_zlabel('Z [m]')
+    ax3d.set_title('3D Tracking: Actual Position vs LOS Target')
+    ax3d.legend()
+    
+    png_3d = f"{save_dir}/flight_{stamp}_3d_track.png"
+    fig3d.savefig(png_3d, dpi=110)
+    print(f"Plot 3D salvato: {png_3d}")
+
+    # 2D
+    ax2d.plot(pos[0], pos[1], label="Trajectory", color='b', linewidth=2)
+    ax2d.plot(los[0], los[1], label="LOS Target", color='g', linestyle='--', linewidth=1.5)
+    ax2d.quiver(pos[0, ::step_size], pos[1, ::step_size],
+                los[0, ::step_size] - pos[0, ::step_size],
+                los[1, ::step_size] - pos[1, ::step_size],
+                angles='xy', scale_units='xy', scale=1, color='r', alpha=0.6, width=0.003, label="Error Vector")
+    ax2d.set_xlabel('X [m]'); ax2d.set_ylabel('Y [m]')
+    ax2d.set_title('2D Top-Down View: XY Tracking')
+    ax2d.axis('equal'); ax2d.grid(True); ax2d.legend()
+    
+    png_2d = f"{save_dir}/flight_{stamp}_2d_track.png"
+    fig2d.savefig(png_2d, dpi=110)
+    print(f"Plot 2D salvato: {png_2d}")
+
+    # =====================================================================
+    # PLOT 2: Reachable Polytope Entry (Solo fase Landing)
+    # =====================================================================
+    try:
+        d = np.load(polytope_path)
+        H_ax, h_ax, H_vz, h_vz = d["H_ax"], d["h_ax"], d["H_vz"], d["h_vz"]
+        V_ax, V_vz = d["V_ax"], d["V_vz"]
+        
+        ep, ev, tt = pos[:, landing_mask] - fp[:, None], vel[:, landing_mask], t[landing_mask]
+        Np = ep.shape[1]
+
+        def inside(H, h, e, v): return np.all(H @ np.array([e, v]) <= h + 1e-6)
+        in_all = np.array([inside(H_ax, h_ax, ep[0, k], ev[0, k]) and 
+                           inside(H_ax, h_ax, ep[1, k], ev[1, k]) and 
+                           inside(H_vz, h_vz, ep[2, k], ev[2, k]) for k in range(Np)])
+        entry = int(np.argmax(in_all)) if in_all.any() else None
+
+        panels = [("Asse X", ep[0], ev[0], V_ax, "e_x [m]", "e_vx [m/s]"),
+                  ("Asse Y", ep[1], ev[1], V_ax, "e_y [m]", "e_vy [m/s]"),
+                  ("Asse Z", ep[2], ev[2], V_vz, "e_z [m]", "e_vz [m/s]")]
+        
+        fig_poly, axes = plt.subplots(1, 3, figsize=(16, 5.2))
+        for ax, (name, e, v, V, xl, yl) in zip(axes, panels):
+            Vc = np.vstack([V, V[0]])
+            ax.fill(Vc[:, 0], Vc[:, 1], color="tab:green", alpha=0.10)
+            ax.plot(Vc[:, 0], Vc[:, 1], color="tab:green", lw=1.6)
+            pts = np.array([e, v]).T.reshape(-1, 1, 2)
+            segs = np.concatenate([pts[:-1], pts[1:]], axis=1)
+            lc = LineCollection(segs, cmap="plasma", zorder=2)
+            lc.set_array(tt[:-1]); lc.set_linewidth(2.0); ax.add_collection(lc)
+            ax.scatter(e[0], v[0], c="k", s=55, zorder=4)
+            if entry is not None:
+                ax.scatter(e[entry], v[entry], marker="*", s=280, c="red", edgecolor="k", zorder=5)
+            xs, ys = np.r_[Vc[:, 0], e], np.r_[Vc[:, 1], v]
+            mx, my = 0.1*np.ptp(xs), 0.1*np.ptp(ys)
+            ax.set_xlim(xs.min()-mx, xs.max()+mx); ax.set_ylim(ys.min()-my, ys.max()+my)
+            ax.set_xlabel(xl); ax.set_ylabel(yl); ax.set_title(name)
+            ax.grid(alpha=.3); ax.axhline(0, color='k', lw=.4); ax.axvline(0, color='k', lw=.4)
+        
+        fig_poly.colorbar(lc, ax=axes, fraction=0.025, pad=0.02).set_label("tempo [s] (landing)")
+        msg = f"Gate a t={tt[entry]:.2f}s" if entry is not None else "Gate mai attivo"
+        fig_poly.suptitle(f"Stato-errore sul set controllabile — {msg}")
+        
+        png_poly = f"{save_dir}/flight_{stamp}_polytope.png"
+        fig_poly.savefig(png_poly, dpi=110, bbox_inches="tight")
+        print(f"Plot Politopo salvato: {png_poly}")
+        
+    except FileNotFoundError:
+        print(f"File {polytope_path} non trovato, plot politopo ignorato.")
+
+    # =====================================================================
+    # PLOT 3: Glideslope Cone (CBF)
+    # =====================================================================
+    if np.sum(landing_mask) > 1:
+        ex, ey, ez = ep[0], ep[1], ep[2]
+        d_xy = np.sqrt(ex**2 + ey**2)
+        margin = ez - alpha_cone * np.maximum(0, d_xy - r_base)
+        n_out = int(np.sum((margin < -1e-6) & (ez < z_cut)))
+
+        fig_cone = plt.figure(figsize=(11, 8))
+        ax_cone = fig_cone.add_subplot(111, projection="3d")
+
+        r_max = float(np.nanmax(d_xy)) * 1.05 + 1e-6
+        rr, th = np.linspace(0, r_max, 30), np.linspace(0, 2*np.pi, 40)
+        R, TH = np.meshgrid(rr, th)
+        Xc, Yc = R*np.cos(TH), R*np.sin(TH)
+        Zc = np.minimum(alpha_cone * np.maximum(0, R - r_base), z_cut)
+        
+        ax_cone.plot_surface(Xc, Yc, Zc, alpha=0.15, color="tab:green", linewidth=0, antialiased=True)
+        ax_cone.plot_wireframe(Xc, Yc, Zc, color="tab:green", linewidth=0.4, rstride=4, cstride=4, alpha=0.5)
+
+        pts3d = np.array([ex, ey, ez]).T.reshape(-1, 1, 3)
+        segs3d = np.concatenate([pts3d[:-1], pts3d[1:]], axis=1)
+        lc3d = Line3DCollection(segs3d, cmap="plasma", linewidth=2.5)
+        lc3d.set_array(tt[:-1])
+        ax_cone.add_collection3d(lc3d)
+
+        ax_cone.scatter(ex[0], ey[0], ez[0], c="k", s=60, label="inizio landing")
+        ax_cone.scatter(ex[-1], ey[-1], ez[-1], marker="*", s=260, c="red", edgecolor="k", label="touchdown")
+
+        fig_cone.colorbar(lc3d, ax=ax_cone, fraction=0.03, pad=0.08).set_label("tempo [s] (landing)")
+        ax_cone.set_xlabel("e_x [m]"); ax_cone.set_ylabel("e_y [m]"); ax_cone.set_zlabel("e_z [m]")
+        status = "DENTRO il cono" if n_out == 0 else f"{n_out}/{Np} campioni FUORI"
+        ax_cone.set_title(f"Traiettoria di landing nel cono (alpha={alpha_cone}) — {status}")
+        ax_cone.legend(loc="upper left")
+        ax_cone.view_init(elev=18, azim=-60)
+        
+        png_cone = f"{save_dir}/flight_{stamp}_cone.png"
+        fig_cone.savefig(png_cone, dpi=110, bbox_inches="tight")
+        print(f"Plot Cono salvato: {png_cone}")
+
     plt.show()
 
 
@@ -208,9 +387,9 @@ def main():
                     rows.append(dict(
                         t=time.perf_counter() - t_start, state=state, mode=mode,
                         x=pos[0], y=pos[1], z=pos[2], vx=vel[0], vy=vel[1], vz=vel[2],
-                        carrot_z=p_LOS[2], force=force, cmd=cmd, az=az, solve_ms=solve_ms))
+                        carrot_x=p_LOS[0], carrot_y=p_LOS[1], carrot_z=p_LOS[2], force=force, cmd=cmd, az=az, solve_ms=solve_ms))
 
-                    print(f"[{state:9s} mode={mode}] z={pos[2]:5.2f} "
+                    print(f"[{state:9s} mode={mode}] x={pos[0]:5.2f} y={pos[1]:5.2f} z={pos[2]:5.2f} "
                           f"cmd={cmd:5d} az={az:+5.2f} carrot_z={p_LOS[2]:.2f}")
 
                     pos_e = WP[wp_counter] - pos
@@ -231,7 +410,17 @@ def main():
                 cf.commander.send_setpoint(0.0, 0.0, 0, 0); time.sleep(DT)
             cf.commander.send_stop_setpoint()
 
-    save_and_plot(rows)
+    current_stamp = save_and_plot(rows)
+
+    plot_advanced_diagnostics(
+        rows=rows, 
+        target_xy=TARGET_XY, 
+        z_land=Z_LAND, 
+        stamp=current_stamp,
+        alpha_cone=ALPHA_CONE,
+        z_cut=1.0, 
+        r_base=0.1
+    )
 
 
 if __name__ == "__main__":
