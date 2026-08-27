@@ -28,7 +28,7 @@ class HybridController:
         self.dt = dt
         self.M = mass
         self.GRAVITY = mass * g
-        self.N = 70
+        self.N = 40
 
         # ---- MPC prediction models (identici al sim) -----------------------
         self.A_hrz = np.array([[1, 0, dt, 0],
@@ -48,7 +48,7 @@ class HybridController:
         self.D_COEFF_FOR = np.array([.2, .2, .5])
 
         # ---- MPC weights ---------------------------------------------------
-        self.Q_hrz = np.diag([20.0, 20.0, 10.0, 10.0])
+        self.Q_hrz = np.diag([20.0, 20.0, 15.0, 15.0])
         self.R_hrz = np.diag([10.0, 10.0])
         self.Q_vrt = np.diag([30.0, 15.0])
         self.R_vrt = np.diag([15.0])
@@ -60,12 +60,14 @@ class HybridController:
 
         # ---- Cone CBF (glideslope) -----------------------------------------
         self.cbf_cone_enabled = True
-        #self.alpha_cone = 1.72
 
+        #self.alpha_cone = 5.6
         self.alpha_cone = 1.0
-        self.gamma_cbf = 0.5
         self.z_cut = 1.0
-        self.r_base = 0.1
+        self.r_base = 0.3
+
+        self.gamma_cbf = 0.5
+        
 
         # ---- multi-rate decimation -----------------------------------------
         self.MPC_FREQ_DIVIDER = 2

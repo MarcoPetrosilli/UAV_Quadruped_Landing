@@ -206,10 +206,10 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
     except ImportError:
         print("Matplotlib non disponibile per i plot avanzati.")
         return
-
+ 
     if not rows:
         return
-
+ 
     # Genera un timestamp se non viene passato
     if stamp is None:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -217,7 +217,7 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
     # Crea la cartella se non esiste
     save_dir = "last_run_plots"
     os.makedirs(save_dir, exist_ok=True)
-
+ 
     # 1. Estrazione dati dal dizionario
     t = np.array([r["t"] for r in rows])
     pos = np.array([[r["x"], r["y"], r["z"]] for r in rows]).T
@@ -227,7 +227,7 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
     
     landing_mask = (state_str == "landing")
     fp = np.array([target_xy[0], target_xy[1], z_land])
-
+ 
     # =====================================================================
     # PLOT 1: Traiettoria 3D e 2D (Reale vs LOS)
     # =====================================================================
@@ -235,7 +235,7 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
     ax3d = fig3d.add_subplot(111, projection='3d')
     fig2d = plt.figure(figsize=(10, 8))
     ax2d = fig2d.add_subplot(111)
-
+ 
     # 3D
     ax3d.plot(pos[0], pos[1], pos[2], label="Trajectory", color='b', linewidth=2)
     ax3d.plot(los[0], los[1], los[2], label="LOS Target", color='g', linestyle='--', linewidth=1.5)
@@ -252,7 +252,7 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
     png_3d = f"{save_dir}/flight_{stamp}_3d_track.png"
     fig3d.savefig(png_3d, dpi=110)
     print(f"Plot 3D salvato: {png_3d}")
-
+ 
     # 2D
     ax2d.plot(pos[0], pos[1], label="Trajectory", color='b', linewidth=2)
     ax2d.plot(los[0], los[1], label="LOS Target", color='g', linestyle='--', linewidth=1.5)
@@ -267,7 +267,7 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
     png_2d = f"{save_dir}/flight_{stamp}_2d_track.png"
     fig2d.savefig(png_2d, dpi=110)
     print(f"Plot 2D salvato: {png_2d}")
-
+ 
     # =====================================================================
     # PLOT 2: Reachable Polytope Entry (Solo fase Landing)
     # =====================================================================
@@ -278,13 +278,13 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
         
         ep, ev, tt = pos[:, landing_mask] - fp[:, None], vel[:, landing_mask], t[landing_mask]
         Np = ep.shape[1]
-
+ 
         def inside(H, h, e, v): return np.all(H @ np.array([e, v]) <= h + 1e-6)
         in_all = np.array([inside(H_ax, h_ax, ep[0, k], ev[0, k]) and 
                            inside(H_ax, h_ax, ep[1, k], ev[1, k]) and 
                            inside(H_vz, h_vz, ep[2, k], ev[2, k]) for k in range(Np)])
         entry = int(np.argmax(in_all)) if in_all.any() else None
-
+ 
         panels = [("Asse X", ep[0], ev[0], V_ax, "e_x [m]", "e_vx [m/s]"),
                   ("Asse Y", ep[1], ev[1], V_ax, "e_y [m]", "e_vy [m/s]"),
                   ("Asse Z", ep[2], ev[2], V_vz, "e_z [m]", "e_vz [m/s]")]
@@ -317,7 +317,7 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
         
     except FileNotFoundError:
         print(f"File {polytope_path} non trovato, plot politopo ignorato.")
-
+ 
     # =====================================================================
     # PLOT 3: Glideslope Cone (CBF)
     # =====================================================================
@@ -326,10 +326,10 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
         d_xy = np.sqrt(ex**2 + ey**2)
         margin = ez - alpha_cone * np.maximum(0, d_xy - r_base)
         n_out = int(np.sum((margin < -1e-6) & (ez < z_cut)))
-
+ 
         fig_cone = plt.figure(figsize=(11, 8))
         ax_cone = fig_cone.add_subplot(111, projection="3d")
-
+ 
         r_max = float(np.nanmax(d_xy)) * 1.05 + 1e-6
         rr, th = np.linspace(0, r_max, 30), np.linspace(0, 2*np.pi, 40)
         R, TH = np.meshgrid(rr, th)
@@ -338,18 +338,33 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
         
         ax_cone.plot_surface(Xc, Yc, Zc, alpha=0.15, color="tab:green", linewidth=0, antialiased=True)
         ax_cone.plot_wireframe(Xc, Yc, Zc, color="tab:green", linewidth=0.4, rstride=4, cstride=4, alpha=0.5)
-
+ 
         pts3d = np.array([ex, ey, ez]).T.reshape(-1, 1, 3)
         segs3d = np.concatenate([pts3d[:-1], pts3d[1:]], axis=1)
         lc3d = Line3DCollection(segs3d, cmap="plasma", linewidth=2.5)
         lc3d.set_array(tt[:-1])
         ax_cone.add_collection3d(lc3d)
-
+ 
         ax_cone.scatter(ex[0], ey[0], ez[0], c="k", s=60, label="inizio landing")
         ax_cone.scatter(ex[-1], ey[-1], ez[-1], marker="*", s=260, c="red", edgecolor="k", label="touchdown")
-
+ 
         fig_cone.colorbar(lc3d, ax=ax_cone, fraction=0.03, pad=0.08).set_label("tempo [s] (landing)")
         ax_cone.set_xlabel("e_x [m]"); ax_cone.set_ylabel("e_y [m]"); ax_cone.set_zlabel("e_z [m]")
+ 
+        # --- ASPECT RATIO FISICO: 1 metro = stessa lunghezza su x, y, z ---------
+        # senza questo matplotlib rende il box cubico e il cono appare sempre
+        # ugualmente svasato a prescindere da alpha. Imponiamo range uguali sui
+        # tre assi (il piu' grande dei tre) centrati, cosi' la pendenza reale
+        # del cono (governata da alpha) e' visibile.
+        xall = np.concatenate([Xc.ravel(), ex]); yall = np.concatenate([Yc.ravel(), ey])
+        zall = np.concatenate([Zc.ravel(), ez])
+        xr = (xall.min(), xall.max()); yr = (yall.min(), yall.max()); zr = (zall.min(), zall.max())
+        max_range = max(xr[1]-xr[0], yr[1]-yr[0], zr[1]-zr[0]) / 2.0
+        xm = 0.5*(xr[0]+xr[1]); ym = 0.5*(yr[0]+yr[1]); zm = 0.5*(zr[0]+zr[1])
+        ax_cone.set_xlim(xm-max_range, xm+max_range)
+        ax_cone.set_ylim(ym-max_range, ym+max_range)
+        ax_cone.set_zlim(zm-max_range, zm+max_range)
+        ax_cone.set_box_aspect((1, 1, 1))   # box cubico + range uguali => scala metrica isotropa
         status = "DENTRO il cono" if n_out == 0 else f"{n_out}/{Np} campioni FUORI"
         ax_cone.set_title(f"Traiettoria di landing nel cono (alpha={alpha_cone}) — {status}")
         ax_cone.legend(loc="upper left")
@@ -358,8 +373,9 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
         png_cone = f"{save_dir}/flight_{stamp}_cone.png"
         fig_cone.savefig(png_cone, dpi=110, bbox_inches="tight")
         print(f"Plot Cono salvato: {png_cone}")
-
+ 
     plt.show()
+
 
 
 def main():
@@ -472,7 +488,7 @@ def main():
                             # la retta di landing (P_start->target) sta DENTRO il cono con margine
                             # alpha*r_base (grazie al cilindro di base), e il landing scatta quando
                             # il drone RAGGIUNGE P_start -> nessun salto di riferimento.
-                            dist_xy_start = (Z_HOLD - Z_LAND) / ALPHA_CONE
+                            dist_xy_start = (Z_HOLD - Z_LAND) / ALPHA_CONE 
                             seg_nav = WP[HOLD][0:2] - WP[NAV][0:2]
                             Lnav = np.linalg.norm(seg_nav)
                             u_nav = seg_nav / Lnav if Lnav > 1e-6 else np.zeros(2)
@@ -494,7 +510,7 @@ def main():
         stamp=current_stamp,
         alpha_cone=ALPHA_CONE,
         z_cut=1.0, 
-        r_base=0.1
+        r_base=0.3
     )
 
 

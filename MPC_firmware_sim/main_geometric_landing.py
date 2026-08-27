@@ -45,7 +45,7 @@ TARGET_XY = np.array([3.5, 3.5])
 Z_CRUISE = 1.8
 Z_LAND = 0.1
 Z_HOLD = 1.8
-ALPHA_CONE = 5.6
+ALPHA_CONE = 0.56
 #ALPHA_CONE = 1.0
 LOS_DELTA = 0.3
 A_XY = 0.17
@@ -459,7 +459,7 @@ def main():
                         d_xy = np.linalg.norm(TARGET_XY - pos[0:2])
                         if d_xy <= (Z_HOLD / ALPHA_CONE):
                         #if d_xy <= (Z_HOLD / ALPHA_CONE):
-                            state = "landing"; old_wp_id, wp_counter, stop_delta = HOLD, LANDING, 0.1
+                            state = "landing"; old_wp_id, wp_counter, stop_delta = HOLD, LANDING, 0.05
                             dynamic_p_start = p_LOS.copy()
                             land_t0 = time.perf_counter()
                     elif distance <= stop_delta:
