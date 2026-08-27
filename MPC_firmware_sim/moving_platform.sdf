@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <!-- Piattaforma mobile: un box piatto (30x30x4 cm) che fa da "quadrupede/piattaforma".
+       Kinematic = true: si muove per comando di posa (NON cade, non serve fisica dei contatti).
+       La muoviamo da Python via gz topic, con la STESSA legge del target logico (TARGET_VEL). -->
+  <model name="moving_platform">
+    <pose>3.5 3.5 0.05 0 0 0</pose>   <!-- posizione iniziale = TARGET_XY iniziale, z=mezzo spessore -->
+    <static>false</static>
+    <link name="link">
+      <kinematic>true</kinematic>     <!-- mossa cinematicamente, non dalla dinamica -->
+      <inertial>
+        <mass>1.0</mass>
+        <inertia><ixx>0.01</ixx><iyy>0.01</iyy><izz>0.01</izz>
+                 <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+      </inertial>
+      <visual name="visual">
+        <geometry><box><size>0.30 0.30 0.04</size></box></geometry>
+        <material>
+          <ambient>0.1 0.4 0.9 1</ambient>
+          <diffuse>0.1 0.4 0.9 1</diffuse>
+        </material>
+      </visual>
+      <collision name="collision">
+        <geometry><box><size>0.30 0.30 0.04</size></box></geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

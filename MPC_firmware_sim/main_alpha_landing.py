@@ -1,10 +1,5 @@
 """
 main_crazysim.py  —  LOS + FSM (percorso a L) + logging CSV + plot diagnostico.
-
-Versione con i TUOI valori: HOVER_CMD=32000, massa 0.0379, Z_LAND=0.1,
-TARGET_XY=[3.5,3.5], NAV a (0,3.5). Registra tutto su CSV e a fine volo apre
-un grafico a 4 pannelli (z/carrot, vz, cmd, az) con la zona MPC ombreggiata e
-una riga verticale allo switch PID->MPC. In console: statistiche loop e solve.
 """
 
 import time
@@ -28,7 +23,7 @@ G = 9.81
 
 # ---- calibrazione spinta -----------------------------------------------------
 HOVER_CMD = 32000
-MASS = 0.0379                      # deve combaciare con self.M nel controllore
+MASS = 0.0379                      
 HOVER_FORCE = MASS * G
 
 
@@ -40,16 +35,16 @@ def rad2deg(x):
     return x * 180.0 / math.pi
 
 
-# ---- missione (statica, percorso a L) ----------------------------------------
+# ---- missione (dinamica, percorso a L con piattaforma mobile) ----------------
 TARGET_XY = np.array([3.5, 3.5])
+TARGET_VEL = np.array([0.4, 0.0, 0.0])  # Velocità del quadrupede/piattaforma
 Z_CRUISE = 1.8
 Z_LAND = 0.1
 Z_HOLD = 1.8
-#ALPHA_CONE = 5.6
 ALPHA_CONE = 1.0
 LOS_DELTA = 0.3
 A_XY = 0.17
-R_BASE_CONE = 0.1   # deve combaciare con self.r_base del controllore
+R_BASE_CONE = 0.3   
 IDLE, RISING, NAV, HOLD, LANDING = 0, 1, 2, 3, 4
 
 
@@ -90,18 +85,16 @@ def save_and_plot(rows):
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     csv_path = f"last_run_plots/flight_{stamp}.csv"
     cols = ["t", "state", "mode", "x", "y", "z", "vx", "vy", "vz",
-            "carrot_x", "carrot_y", "carrot_z", "force", "cmd", "az", "solve_ms"]
+            "carrot_x", "carrot_y", "carrot_z", "force", "cmd", "az", "solve_ms",
+            "target_x", "target_y", "target_z", "target_vx", "target_vy", "target_vz"]
     with open(csv_path, "w", newline="") as f:
         w = csv.writer(f); w.writerow(cols)
         for r in rows:
             w.writerow([r[c] for c in cols])
     print(f"CSV salvato: {csv_path}  ({len(rows)} righe)")
 
-    # Estraiamo i dati numerici
     a = {c: np.array([r[c] for r in rows], dtype=float) for c in cols if c != "state"}
     mode = a["mode"]; t = a["t"]
-    
-    # NOVITÀ: Estraiamo la sequenza degli stati (stringhe)
     state_str = np.array([r["state"] for r in rows])
 
     dt_wall = np.diff(t)
@@ -118,7 +111,6 @@ def save_and_plot(rows):
     except Exception as e:
         print("matplotlib non disponibile:", e); return
 
-    # Aumentato leggermente figsize per fare spazio alle etichette di stato
     fig, ax = plt.subplots(6, 1, sharex=True, figsize=(11, 10))
 
     def shade_mpc(axis):
@@ -150,22 +142,15 @@ def save_and_plot(rows):
 
     ax[4].plot(t, a["x"], label="x", lw=1.5)
     ax[4].plot(t, a["carrot_x"], label="carrot_x", lw=1, ls="--")
-    ax[4].axhline(3.5, color="k", lw=0.8, ls=":", label="target land")
+    ax[4].plot(t, a["target_x"], color="k", lw=0.8, ls=":", label="target platform")
     ax[4].set_ylabel("x [m]"); ax[4].legend(loc="upper right"); shade_mpc(ax[4])
 
-    # Corretto label='y' e spostato set_xlabel in fondo
     ax[5].plot(t, a["y"], label="y", lw=1.5)
     ax[5].plot(t, a["carrot_y"], label="carrot_y", lw=1, ls="--")
-    ax[5].axhline(3.5, color="k", lw=0.8, ls=":", label="target land")
+    ax[5].plot(t, a["target_y"], color="k", lw=0.8, ls=":", label="target platform")
     ax[5].set_ylabel("y [m]"); ax[5].set_xlabel("t [s]"); ax[5].legend(loc="upper right"); shade_mpc(ax[5])
 
-
-    # =====================================================================
-    # NOVITÀ: LINEE VERTICALI PER OGNI TRANSIZIONE DI STATO (FSM)
-    # =====================================================================
     trans_idx = np.where(state_str[:-1] != state_str[1:])[0]
-    
-    # Etichetta dello stato iniziale all'istante t=0
     if len(t) > 0:
         ax[0].text(t[0], 1.05, f" {state_str[0].upper()}", transform=ax[0].get_xaxis_transform(),
                    fontsize=9, color="black", fontweight="bold", alpha=0.7)
@@ -173,19 +158,13 @@ def save_and_plot(rows):
     for idx in trans_idx:
         t_trans = t[idx + 1]
         new_state = state_str[idx + 1]
-        
-        # Disegna la linea tratteggiata su tutti i grafici
         for axi in ax:
             axi.axvline(t_trans, color="black", linestyle="--", lw=1.2, alpha=0.6)
-        
-        # Scrive il nome del nuovo stato sopra il primo grafico
         ax[0].text(t_trans, 1.05, f" {new_state.upper()}", transform=ax[0].get_xaxis_transform(),
                    fontsize=9, color="black", fontweight="bold", alpha=0.7)
-    # =====================================================================
 
-    fig.suptitle("Volo CrazySim — Transizioni FSM e MPC attivo (sfondo arancione)", y=0.99)
+    fig.suptitle("Volo CrazySim — Inseguimento Piattaforma Mobile", y=0.99)
     fig.tight_layout()
-    # Lasciamo spazio in alto per i nomi degli stati
     fig.subplots_adjust(top=0.94)
     
     png = f"last_run_plots/flight_{stamp}.png"; fig.savefig(png, dpi=110)
@@ -194,10 +173,9 @@ def save_and_plot(rows):
 
     return stamp
 
-def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.0, z_cut=1.0, r_base=0.1, polytope_path="reachable_polytope.npz"):
+def plot_advanced_diagnostics(rows, stamp=None, alpha_cone=1.0, z_cut=1.0, r_base=0.1, polytope_path="reachable_polytope.npz"):
     import numpy as np
     import os
-    from datetime import datetime
     
     try:
         import matplotlib.pyplot as plt
@@ -207,38 +185,33 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
         print("Matplotlib non disponibile per i plot avanzati.")
         return
  
-    if not rows:
-        return
+    if not rows: return
+    if stamp is None: stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    os.makedirs("last_run_plots", exist_ok=True)
  
-    # Genera un timestamp se non viene passato
-    if stamp is None:
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-    # Crea la cartella se non esiste
-    save_dir = "last_run_plots"
-    os.makedirs(save_dir, exist_ok=True)
- 
-    # 1. Estrazione dati dal dizionario
     t = np.array([r["t"] for r in rows])
     pos = np.array([[r["x"], r["y"], r["z"]] for r in rows]).T
     vel = np.array([[r["vx"], r["vy"], r["vz"]] for r in rows]).T
     los = np.array([[r["carrot_x"], r["carrot_y"], r["carrot_z"]] for r in rows]).T
     state_str = np.array([r["state"] for r in rows])
     
+    # NOVITA: Errori dinamici tracciati lungo la piattaforma in movimento
+    target_pos = np.array([[r["target_x"], r["target_y"], r["target_z"]] for r in rows]).T
+    target_vel = np.array([[r["target_vx"], r["target_vy"], r["target_vz"]] for r in rows]).T
+
     landing_mask = (state_str == "landing")
-    fp = np.array([target_xy[0], target_xy[1], z_land])
+    fp = target_pos[:, landing_mask]
+    fv = target_vel[:, landing_mask]
  
-    # =====================================================================
-    # PLOT 1: Traiettoria 3D e 2D (Reale vs LOS)
-    # =====================================================================
     fig3d = plt.figure(figsize=(10, 8))
     ax3d = fig3d.add_subplot(111, projection='3d')
     fig2d = plt.figure(figsize=(10, 8))
     ax2d = fig2d.add_subplot(111)
  
-    # 3D
     ax3d.plot(pos[0], pos[1], pos[2], label="Trajectory", color='b', linewidth=2)
     ax3d.plot(los[0], los[1], los[2], label="LOS Target", color='g', linestyle='--', linewidth=1.5)
+    ax3d.plot(target_pos[0], target_pos[1], target_pos[2], label="Moving Platform", color='k', linestyle=':', linewidth=2)
+    
     step_size = max(1, int(pos.shape[1] / 50))
     ax3d.quiver(pos[0, ::step_size], pos[1, ::step_size], pos[2, ::step_size],
                 los[0, ::step_size] - pos[0, ::step_size],
@@ -248,14 +221,11 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
     ax3d.set_xlabel('X [m]'); ax3d.set_ylabel('Y [m]'); ax3d.set_zlabel('Z [m]')
     ax3d.set_title('3D Tracking: Actual Position vs LOS Target')
     ax3d.legend()
-    
-    png_3d = f"{save_dir}/flight_{stamp}_3d_track.png"
-    fig3d.savefig(png_3d, dpi=110)
-    print(f"Plot 3D salvato: {png_3d}")
+    fig3d.savefig(f"last_run_plots/flight_{stamp}_3d_track.png", dpi=110)
  
-    # 2D
     ax2d.plot(pos[0], pos[1], label="Trajectory", color='b', linewidth=2)
     ax2d.plot(los[0], los[1], label="LOS Target", color='g', linestyle='--', linewidth=1.5)
+    ax2d.plot(target_pos[0], target_pos[1], label="Moving Platform", color='k', linestyle=':', linewidth=2)
     ax2d.quiver(pos[0, ::step_size], pos[1, ::step_size],
                 los[0, ::step_size] - pos[0, ::step_size],
                 los[1, ::step_size] - pos[1, ::step_size],
@@ -263,20 +233,17 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
     ax2d.set_xlabel('X [m]'); ax2d.set_ylabel('Y [m]')
     ax2d.set_title('2D Top-Down View: XY Tracking')
     ax2d.axis('equal'); ax2d.grid(True); ax2d.legend()
-    
-    png_2d = f"{save_dir}/flight_{stamp}_2d_track.png"
-    fig2d.savefig(png_2d, dpi=110)
-    print(f"Plot 2D salvato: {png_2d}")
+    fig2d.savefig(f"last_run_plots/flight_{stamp}_2d_track.png", dpi=110)
  
-    # =====================================================================
-    # PLOT 2: Reachable Polytope Entry (Solo fase Landing)
-    # =====================================================================
     try:
         d = np.load(polytope_path)
         H_ax, h_ax, H_vz, h_vz = d["H_ax"], d["h_ax"], d["H_vz"], d["h_vz"]
         V_ax, V_vz = d["V_ax"], d["V_vz"]
         
-        ep, ev, tt = pos[:, landing_mask] - fp[:, None], vel[:, landing_mask], t[landing_mask]
+        # Errore relativo alla piattaforma mobile
+        ep = pos[:, landing_mask] - fp
+        ev = vel[:, landing_mask] - fv
+        tt = t[landing_mask]
         Np = ep.shape[1]
  
         def inside(H, h, e, v): return np.all(H @ np.array([e, v]) <= h + 1e-6)
@@ -309,18 +276,12 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
         
         fig_poly.colorbar(lc, ax=axes, fraction=0.025, pad=0.02).set_label("tempo [s] (landing)")
         msg = f"Gate a t={tt[entry]:.2f}s" if entry is not None else "Gate mai attivo"
-        fig_poly.suptitle(f"Stato-errore sul set controllabile — {msg}")
-        
-        png_poly = f"{save_dir}/flight_{stamp}_polytope.png"
-        fig_poly.savefig(png_poly, dpi=110, bbox_inches="tight")
-        print(f"Plot Politopo salvato: {png_poly}")
+        fig_poly.suptitle(f"Stato-errore sul set controllabile (Mobile Frame) — {msg}")
+        fig_poly.savefig(f"last_run_plots/flight_{stamp}_polytope.png", dpi=110, bbox_inches="tight")
         
     except FileNotFoundError:
-        print(f"File {polytope_path} non trovato, plot politopo ignorato.")
+        pass
  
-    # =====================================================================
-    # PLOT 3: Glideslope Cone (CBF)
-    # =====================================================================
     if np.sum(landing_mask) > 1:
         ex, ey, ez = ep[0], ep[1], ep[2]
         d_xy = np.sqrt(ex**2 + ey**2)
@@ -329,7 +290,6 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
  
         fig_cone = plt.figure(figsize=(11, 8))
         ax_cone = fig_cone.add_subplot(111, projection="3d")
- 
         r_max = float(np.nanmax(d_xy)) * 1.05 + 1e-6
         rr, th = np.linspace(0, r_max, 30), np.linspace(0, 2*np.pi, 40)
         R, TH = np.meshgrid(rr, th)
@@ -347,15 +307,9 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
  
         ax_cone.scatter(ex[0], ey[0], ez[0], c="k", s=60, label="inizio landing")
         ax_cone.scatter(ex[-1], ey[-1], ez[-1], marker="*", s=260, c="red", edgecolor="k", label="touchdown")
- 
         fig_cone.colorbar(lc3d, ax=ax_cone, fraction=0.03, pad=0.08).set_label("tempo [s] (landing)")
         ax_cone.set_xlabel("e_x [m]"); ax_cone.set_ylabel("e_y [m]"); ax_cone.set_zlabel("e_z [m]")
  
-        # --- ASPECT RATIO FISICO: 1 metro = stessa lunghezza su x, y, z ---------
-        # senza questo matplotlib rende il box cubico e il cono appare sempre
-        # ugualmente svasato a prescindere da alpha. Imponiamo range uguali sui
-        # tre assi (il piu' grande dei tre) centrati, cosi' la pendenza reale
-        # del cono (governata da alpha) e' visibile.
         xall = np.concatenate([Xc.ravel(), ex]); yall = np.concatenate([Yc.ravel(), ey])
         zall = np.concatenate([Zc.ravel(), ez])
         xr = (xall.min(), xall.max()); yr = (yall.min(), yall.max()); zr = (zall.min(), zall.max())
@@ -364,18 +318,15 @@ def plot_advanced_diagnostics(rows, target_xy, z_land, stamp=None, alpha_cone=1.
         ax_cone.set_xlim(xm-max_range, xm+max_range)
         ax_cone.set_ylim(ym-max_range, ym+max_range)
         ax_cone.set_zlim(zm-max_range, zm+max_range)
-        ax_cone.set_box_aspect((1, 1, 1))   # box cubico + range uguali => scala metrica isotropa
+        ax_cone.set_box_aspect((1, 1, 1))
+        
         status = "DENTRO il cono" if n_out == 0 else f"{n_out}/{Np} campioni FUORI"
-        ax_cone.set_title(f"Traiettoria di landing nel cono (alpha={alpha_cone}) — {status}")
+        ax_cone.set_title(f"Traiettoria di landing nel cono Mobile (alpha={alpha_cone}) — {status}")
         ax_cone.legend(loc="upper left")
         ax_cone.view_init(elev=18, azim=-60)
-        
-        png_cone = f"{save_dir}/flight_{stamp}_cone.png"
-        fig_cone.savefig(png_cone, dpi=110, bbox_inches="tight")
-        print(f"Plot Cono salvato: {png_cone}")
+        fig_cone.savefig(f"last_run_plots/flight_{stamp}_cone.png", dpi=110, bbox_inches="tight")
  
     plt.show()
-
 
 
 def main():
@@ -384,7 +335,9 @@ def main():
     rows = []
     t_start = time.perf_counter()
     RAMP_T = 0.5
-    V_LAND = 0.5   # m/s, velocita' fissa della diagonale di landing (rif. PID)
+    V_LAND = 0.5
+    # --- DINAMICA PIATTAFORMA ---
+    global TARGET_XY   
 
     with SyncCrazyflie(URI, cf=Crazyflie(rw_cache="./cache")) as scf:
         cf = scf.cf
@@ -412,11 +365,11 @@ def main():
                     if WP is None:
                         hx, hy = pos[0], pos[1]
                         WP = np.array([
-                            [hx, hy, pos[2]],                              # 0 IDLE
-                            [hx, hy, Z_CRUISE],                            # 1 RISING
-                            [TARGET_XY[0] - 3.5, TARGET_XY[1], Z_CRUISE],  # 2 NAV (0,3.5)
-                            [TARGET_XY[0], TARGET_XY[1], Z_HOLD],          # 3 HOLD
-                            [TARGET_XY[0], TARGET_XY[1], Z_LAND],          # 4 LANDING
+                            [hx, hy, pos[2]],                              
+                            [hx, hy, Z_CRUISE],                            
+                            [TARGET_XY[0] - 3.5, TARGET_XY[1], Z_CRUISE],  
+                            [TARGET_XY[0], TARGET_XY[1], Z_HOLD],          
+                            [TARGET_XY[0], TARGET_XY[1], Z_LAND],          
                         ])
 
                     if state == "idle":
@@ -424,28 +377,37 @@ def main():
 
                     landing = (state == "landing")
 
-                    # rampa TEMPORALE del look-ahead: al cambio segmento delta_eff
-                    # riparte da 0 e sale a LOS_DELTA in RAMP_T secondi (indipendente da s)
                     if wp_counter != prev_wp:
                         if wp_counter != LANDING:
                             seg_t0 = time.perf_counter()
                         prev_wp = wp_counter
                     elapsed = time.perf_counter() - seg_t0
                     delta_eff = LOS_DELTA * min(1.0, elapsed / RAMP_T)
-                    #delta_eff = LOS_DELTA
+
+                    step_disp = TARGET_VEL * DT
+                    
+                    TARGET_XY += step_disp[0:2]
+                    WP[HOLD] += step_disp
+                    WP[LANDING] += step_disp
+                    
+                    if state in ["hold", "landing"]:
+                        current_target_vel = TARGET_VEL
+                        if dynamic_p_start is not None:
+                            dynamic_p_start += step_disp
+                    else:
+                        current_target_vel = np.zeros(3)
+
+                    
+
                     if state == "landing" and dynamic_p_start is not None:
-                        # --- riferimento DIAGONALE a velocita' fissa, dipendente solo dal tempo ---
-                        # retta da dynamic_p_start (punto d'ingresso landing) al target di touchdown,
-                        # percorsa a V_LAND [m/s]. Feedforward puro: NON dipende da pos -> niente
-                        # accoppiamento/ondulazione. Serve al PID finche' l'MPC non subentra.
-                        p_end_land = WP[LANDING]                      # (target_x, target_y, Z_LAND)
+                        p_end_land = WP[LANDING]                      
                         seg = p_end_land - dynamic_p_start
                         L = np.linalg.norm(seg)
                         tau = time.perf_counter() - land_t0
                         if L < 1e-6:
                             p_LOS = p_end_land.copy()
                         else:
-                            s_lin = min(L, V_LAND * tau)              # distanza percorsa lungo la retta
+                            s_lin = min(L, V_LAND * tau)              
                             p_LOS = dynamic_p_start + (s_lin / L) * seg
                     else:
                         current_p_start = WP[old_wp_id]
@@ -454,7 +416,7 @@ def main():
 
                     t0 = time.perf_counter()
                     force, roll, pitch, yaw, mode = ctrl.compute(
-                        pos, vel, p_LOS, target_yaw=0.0, target_vel=np.zeros(3),
+                        pos, vel, p_LOS, target_yaw=0.0, target_vel=current_target_vel,
                         a_xy_lim=A_XY, final_pos=WP[LANDING], landing=landing)
                     solve_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -465,7 +427,9 @@ def main():
                     rows.append(dict(
                         t=time.perf_counter() - t_start, state=state, mode=mode,
                         x=pos[0], y=pos[1], z=pos[2], vx=vel[0], vy=vel[1], vz=vel[2],
-                        carrot_x=p_LOS[0], carrot_y=p_LOS[1], carrot_z=p_LOS[2], force=force, cmd=cmd, az=az, solve_ms=solve_ms))
+                        carrot_x=p_LOS[0], carrot_y=p_LOS[1], carrot_z=p_LOS[2], force=force, cmd=cmd, az=az, solve_ms=solve_ms,
+                        target_x=WP[LANDING][0], target_y=WP[LANDING][1], target_z=WP[LANDING][2],
+                        target_vx=current_target_vel[0], target_vy=current_target_vel[1], target_vz=current_target_vel[2]))
 
                     print(f"[{state:9s} mode={mode}] x={pos[0]:5.2f} y={pos[1]:5.2f} z={pos[2]:5.2f} "
                           f"cmd={cmd:5d} az={az:+5.2f} carrot_z={p_LOS[2]:.2f}")
@@ -476,18 +440,11 @@ def main():
                         if state == "rising":
                             state = "nav_to_wp"; old_wp_id, wp_counter, stop_delta = RISING, NAV, 0.3
                         elif state == "hold":
-                            state = "landing"; old_wp_id, wp_counter, stop_delta = HOLD, LANDING, 0.05
-                            dynamic_p_start = WP[HOLD].copy()   # = P_start, dove il drone e' ora
+                            state = "landing"; old_wp_id, wp_counter, stop_delta = HOLD, LANDING, 0.1
+                            dynamic_p_start = WP[HOLD].copy()   
                             land_t0 = time.perf_counter()
                         elif state == "nav_to_wp":
                             state = "hold"; old_wp_id, wp_counter, stop_delta = NAV, HOLD, 0.3
-                            # --- sposta il wp di HOLD sul punto d'aggancio del glideslope (P_start) ---
-                            # P_start sta sul segmento nav->hold, a dist_xy=(Z_HOLD-Z_LAND)/alpha
-                            # dal target: e' il punto da cui una retta di pendenza alpha, puntando
-                            # all'asse del cono (target,Z_LAND), sale fino a quota Z_HOLD. Cosi'
-                            # la retta di landing (P_start->target) sta DENTRO il cono con margine
-                            # alpha*r_base (grazie al cilindro di base), e il landing scatta quando
-                            # il drone RAGGIUNGE P_start -> nessun salto di riferimento.
                             dist_xy_start = (Z_HOLD - Z_LAND) / ALPHA_CONE 
                             seg_nav = WP[HOLD][0:2] - WP[NAV][0:2]
                             Lnav = np.linalg.norm(seg_nav)
@@ -503,15 +460,7 @@ def main():
 
     current_stamp = save_and_plot(rows)
 
-    plot_advanced_diagnostics(
-        rows=rows, 
-        target_xy=TARGET_XY, 
-        z_land=Z_LAND, 
-        stamp=current_stamp,
-        alpha_cone=ALPHA_CONE,
-        z_cut=1.0, 
-        r_base=0.3
-    )
+    plot_advanced_diagnostics(rows=rows, stamp=current_stamp, alpha_cone=ALPHA_CONE, z_cut=1.0, r_base=0.3)
 
 
 if __name__ == "__main__":
