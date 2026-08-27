@@ -25,22 +25,24 @@ class HybridController:
     def __init__(self, g=9.81, dt=0.02, mass=0.0379,
                  polytope_path="reachable_polytope.npz"):
         self.g = g
+        self.MPC_FREQ_DIVIDER = 2 # MPC running at 25 Hz
         self.dt = dt
+        self.mpc_dt = self.MPC_FREQ_DIVIDER * self.dt
         self.M = mass
         self.GRAVITY = mass * g
         self.N = 70
 
         # ---- MPC prediction models (identici al sim) -----------------------
-        self.A_hrz = np.array([[1, 0, dt, 0],
-                               [0, 1, 0, dt],
+        self.A_hrz = np.array([[1, 0, self.mpc_dt, 0],
+                               [0, 1, 0, self.mpc_dt],
                                [0, 0, 1, 0],
                                [0, 0, 0, 1]])
         self.B_hrz = np.array([[0, 0],
                                [0, 0],
-                               [0, g * dt],
-                               [-g * dt, 0]])
-        self.A_vrt = np.array([[1, dt], [0, 1]])
-        self.B_vrt = np.array([[0], [dt]])
+                               [0, g * self.mpc_dt],
+                               [-g * self.mpc_dt, 0]])
+        self.A_vrt = np.array([[1, self.mpc_dt], [0, 1]])
+        self.B_vrt = np.array([[0], [self.mpc_dt]])
 
         # ---- DSL PID gains (reach) -----------------------------------------
         self.P_COEFF_FOR = np.array([.4, .4, 1.25])
@@ -58,12 +60,12 @@ class HybridController:
         #self.alpha_cone = 1.72
 
         self.alpha_cone = 1.0
-        self.gamma_cbf = 0.1
+        self.gamma_cbf = 0.5
         self.z_cut = 1.0
         self.r_base = 0.1
+        self.rho_slack = 1e4        # peso penalita' slack del cono (grande = slack usato solo se necessario)
 
         # ---- multi-rate decimation -----------------------------------------
-        self.MPC_FREQ_DIVIDER = 2
         self.control_counter = 0
         self.mpc_step = 0
         self.mpc_activated = False
@@ -107,6 +109,11 @@ class HybridController:
         self.p_xref_vrt = cp.Parameter(2)
         self.p_z_plat = cp.Parameter()
         self.p_r_cone = cp.Parameter(self.N + 1)
+        # slack del cono: una variabile >=0 per ogni passo, penalizzata nel costo.
+        # Rende il QP SEMPRE feasible: quando il cono e' impossibile da rispettare
+        # (es. h->0 al vertice), il vincolo viene violato del minimo eps_k invece
+        # di far collassare il solve. E' il rilassamento omega del paper DHOCBF.
+        self.eps_cone = cp.Variable(self.N, nonneg=True)
 
         wQv=np.sqrt(np.diag(self.Q_vrt)); wRv=np.sqrt(np.diag(self.R_vrt)); wQvT=np.sqrt(10.0)*wQv
         cost_vrt = 0
@@ -116,14 +123,30 @@ class HybridController:
             cost_vrt += cp.sum_squares(cp.multiply(wRv, self.u_vrt[:, k]))
             cons_vrt += [self.x_vrt[:, k + 1] == self.A_vrt @ self.x_vrt[:, k] + self.B_vrt @ self.u_vrt[:, k]]
             cons_vrt += [cp.abs(self.u_vrt[:, k]) <= 9.0]
-            
-            # Vincolo CBF (disattivato dinamicamente passando raggi negativi enormi)
+
+            # Vincolo CBF RILASSATO: h_{k+1} >= (1-gamma) h_k - eps_k, con eps_k >= 0
             h_k = (self.x_vrt[0, k] - self.p_z_plat) - self.p_r_cone[k]
             h_k1 = (self.x_vrt[0, k + 1] - self.p_z_plat) - self.p_r_cone[k + 1]
-            cons_vrt += [h_k1 >= (1.0 - self.gamma_cbf) * h_k]
-            
+            cons_vrt += [h_k1 >= (1.0 - self.gamma_cbf) * h_k - self.eps_cone[k]]
+
+        # penalita' quadratica sullo slack: usato solo quando il vincolo e' infeasible
+        cost_vrt += self.rho_slack * cp.sum_squares(self.eps_cone)
         cost_vrt += cp.sum_squares(cp.multiply(wQvT, self.x_vrt[:, self.N] - self.p_xref_vrt))
         self.prob_vrt = cp.Problem(cp.Minimize(cost_vrt), cons_vrt)
+
+        # --- AGGIUNGI QUESTO DUMMY SOLVE (WARM-UP) ---
+        print("Warm-up MPC solver...")
+        self.p_cur_hrz.value = np.zeros(4)
+        self.p_xref_hrz.value = np.zeros((4, self.N + 1))
+        self.p_axy_lim.value = 0.17
+        self.prob_hrz.solve(solver=cp.OSQP)
+        
+        self.p_cur_vrt.value = np.zeros(2)
+        self.p_xref_vrt.value = np.zeros(2)
+        self.p_z_plat.value = 0.0
+        self.p_r_cone.value = np.full(self.N + 1, -100.0)
+        self.prob_vrt.solve(solver=cp.OSQP)
+        print("Warm-up completato.")
 
     # ==================================================================== #
     #  Entry point: stato (pos, vel) -> (forza, roll, pitch, yaw, modo)     #
@@ -233,8 +256,8 @@ class HybridController:
 
         xref_mat = np.zeros((4, self.N + 1))
         for k in range(self.N + 1):
-            xref_mat[:, k] = np.array([wp[0] + target_vel[0] * k * self.dt,
-                                       wp[1] + target_vel[1] * k * self.dt,
+            xref_mat[:, k] = np.array([wp[0] + target_vel[0] * k * self.mpc_dt,
+                                       wp[1] + target_vel[1] * k * self.mpc_dt,
                                        target_vel[0], target_vel[1]])
         self.p_xref_hrz.value = xref_mat
 
@@ -254,8 +277,8 @@ class HybridController:
         self.p_z_plat.value = wp[2]
 
         if use_cone:
-            ex = np.asarray(x_pred) - (wp[0] + target_vel[0] * np.arange(self.N + 1) * self.dt)
-            ey = np.asarray(y_pred) - (wp[1] + target_vel[1] * np.arange(self.N + 1) * self.dt)
+            ex = np.asarray(x_pred) - (wp[0] + target_vel[0] * np.arange(self.N + 1) * self.mpc_dt)
+            ey = np.asarray(y_pred) - (wp[1] + target_vel[1] * np.arange(self.N + 1) * self.mpc_dt)
             r = self.alpha_cone * np.maximum(0, np.sqrt(ex ** 2 + ey ** 2) - self.r_base)
             self.p_r_cone.value = np.minimum(r, self.z_cut)
         else:

@@ -49,6 +49,7 @@ Z_HOLD = 1.8
 ALPHA_CONE = 1.0
 LOS_DELTA = 0.3
 A_XY = 0.17
+R_BASE_CONE = 0.1   # deve combaciare con self.r_base del controllore
 IDLE, RISING, NAV, HOLD, LANDING = 0, 1, 2, 3, 4
 
 
@@ -367,6 +368,7 @@ def main():
     rows = []
     t_start = time.perf_counter()
     RAMP_T = 0.5
+    V_LAND = 0.5   # m/s, velocita' fissa della diagonale di landing (rif. PID)
 
     with SyncCrazyflie(URI, cf=Crazyflie(rw_cache="./cache")) as scf:
         cf = scf.cf
@@ -381,6 +383,7 @@ def main():
         seg_t0 = time.perf_counter()
 
         dynamic_p_start = None
+        land_t0 = None
 
         try:
             with SyncLogger(scf, build_logconf()) as logger:
@@ -415,12 +418,23 @@ def main():
                     delta_eff = LOS_DELTA * min(1.0, elapsed / RAMP_T)
                     #delta_eff = LOS_DELTA
                     if state == "landing" and dynamic_p_start is not None:
-                        current_p_start = dynamic_p_start
+                        # --- riferimento DIAGONALE a velocita' fissa, dipendente solo dal tempo ---
+                        # retta da dynamic_p_start (punto d'ingresso landing) al target di touchdown,
+                        # percorsa a V_LAND [m/s]. Feedforward puro: NON dipende da pos -> niente
+                        # accoppiamento/ondulazione. Serve al PID finche' l'MPC non subentra.
+                        p_end_land = WP[LANDING]                      # (target_x, target_y, Z_LAND)
+                        seg = p_end_land - dynamic_p_start
+                        L = np.linalg.norm(seg)
+                        tau = time.perf_counter() - land_t0
+                        if L < 1e-6:
+                            p_LOS = p_end_land.copy()
+                        else:
+                            s_lin = min(L, V_LAND * tau)              # distanza percorsa lungo la retta
+                            p_LOS = dynamic_p_start + (s_lin / L) * seg
                     else:
                         current_p_start = WP[old_wp_id]
-
-                    p_LOS, _ = LOS_wp(pos, current_p_start, WP[wp_counter],
-                                      delta=delta_eff, stop_delta=stop_delta)
+                        p_LOS, _ = LOS_wp(pos, current_p_start, WP[wp_counter],
+                                          delta=delta_eff, stop_delta=stop_delta)
 
                     t0 = time.perf_counter()
                     force, roll, pitch, yaw, mode = ctrl.compute(
@@ -442,16 +456,28 @@ def main():
 
                     pos_e = WP[wp_counter] - pos
                     distance = np.linalg.norm(pos_e)
-                    if state == "hold":
-                        d_xy = np.linalg.norm(TARGET_XY - pos[0:2])
-                        if d_xy <= 2/3*(Z_HOLD / ALPHA_CONE):
-                            state = "landing"; old_wp_id, wp_counter, stop_delta = HOLD, LANDING, 0.1
-                            dynamic_p_start = pos.copy()
-                    elif distance <= stop_delta:
+                    if distance <= stop_delta:
                         if state == "rising":
                             state = "nav_to_wp"; old_wp_id, wp_counter, stop_delta = RISING, NAV, 0.3
+                        elif state == "hold":
+                            state = "landing"; old_wp_id, wp_counter, stop_delta = HOLD, LANDING, 0.05
+                            dynamic_p_start = WP[HOLD].copy()   # = P_start, dove il drone e' ora
+                            land_t0 = time.perf_counter()
                         elif state == "nav_to_wp":
                             state = "hold"; old_wp_id, wp_counter, stop_delta = NAV, HOLD, 0.3
+                            # --- sposta il wp di HOLD sul punto d'aggancio del glideslope (P_start) ---
+                            # P_start sta sul segmento nav->hold, a dist_xy=(Z_HOLD-Z_LAND)/alpha
+                            # dal target: e' il punto da cui una retta di pendenza alpha, puntando
+                            # all'asse del cono (target,Z_LAND), sale fino a quota Z_HOLD. Cosi'
+                            # la retta di landing (P_start->target) sta DENTRO il cono con margine
+                            # alpha*r_base (grazie al cilindro di base), e il landing scatta quando
+                            # il drone RAGGIUNGE P_start -> nessun salto di riferimento.
+                            dist_xy_start = (Z_HOLD - Z_LAND) / ALPHA_CONE
+                            seg_nav = WP[HOLD][0:2] - WP[NAV][0:2]
+                            Lnav = np.linalg.norm(seg_nav)
+                            u_nav = seg_nav / Lnav if Lnav > 1e-6 else np.zeros(2)
+                            P_start_xy = TARGET_XY - u_nav * dist_xy_start
+                            WP[HOLD] = np.array([P_start_xy[0], P_start_xy[1], Z_HOLD])
                         elif state == "landing":
                             state = "idle"; old_wp_id, wp_counter = LANDING, IDLE
         finally:

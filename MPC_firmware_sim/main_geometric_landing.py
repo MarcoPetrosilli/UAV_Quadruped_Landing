@@ -45,8 +45,8 @@ TARGET_XY = np.array([3.5, 3.5])
 Z_CRUISE = 1.8
 Z_LAND = 0.1
 Z_HOLD = 1.8
-#ALPHA_CONE = 5.6
-ALPHA_CONE = 1.0
+ALPHA_CONE = 5.6
+#ALPHA_CONE = 1.0
 LOS_DELTA = 0.3
 A_XY = 0.17
 IDLE, RISING, NAV, HOLD, LANDING = 0, 1, 2, 3, 4
@@ -96,8 +96,12 @@ def save_and_plot(rows):
             w.writerow([r[c] for c in cols])
     print(f"CSV salvato: {csv_path}  ({len(rows)} righe)")
 
+    # Estraiamo i dati numerici
     a = {c: np.array([r[c] for r in rows], dtype=float) for c in cols if c != "state"}
     mode = a["mode"]; t = a["t"]
+    
+    # NOVITÀ: Estraiamo la sequenza degli stati (stringhe)
+    state_str = np.array([r["state"] for r in rows])
 
     dt_wall = np.diff(t)
     if len(dt_wall):
@@ -113,7 +117,8 @@ def save_and_plot(rows):
     except Exception as e:
         print("matplotlib non disponibile:", e); return
 
-    fig, ax = plt.subplots(6, 1, sharex=True, figsize=(11, 9))
+    # Aumentato leggermente figsize per fare spazio alle etichette di stato
+    fig, ax = plt.subplots(6, 1, sharex=True, figsize=(11, 10))
 
     def shade_mpc(axis):
         on = mode > 0.5
@@ -140,25 +145,48 @@ def save_and_plot(rows):
     ax[2].set_ylabel("thrust cmd"); ax[2].legend(loc="upper right"); shade_mpc(ax[2])
 
     ax[3].plot(t, a["az"], color="tab:purple"); ax[3].axhline(0, color="k", lw=0.6)
-    ax[3].set_ylabel("az [m/s^2]"); ax[3].set_xlabel("t [s]"); shade_mpc(ax[3])
+    ax[3].set_ylabel("az [m/s^2]"); shade_mpc(ax[3])
 
     ax[4].plot(t, a["x"], label="x", lw=1.5)
     ax[4].plot(t, a["carrot_x"], label="carrot_x", lw=1, ls="--")
     ax[4].axhline(3.5, color="k", lw=0.8, ls=":", label="target land")
-    ax[4].set_ylabel("x [m]"); ax[4].legend(loc="upper right"); shade_mpc(ax[0])
+    ax[4].set_ylabel("x [m]"); ax[4].legend(loc="upper right"); shade_mpc(ax[4])
 
-    ax[5].plot(t, a["y"], label="x", lw=1.5)
+    # Corretto label='y' e spostato set_xlabel in fondo
+    ax[5].plot(t, a["y"], label="y", lw=1.5)
     ax[5].plot(t, a["carrot_y"], label="carrot_y", lw=1, ls="--")
     ax[5].axhline(3.5, color="k", lw=0.8, ls=":", label="target land")
-    ax[5].set_ylabel("y [m]"); ax[5].legend(loc="upper right"); shade_mpc(ax[0])
+    ax[5].set_ylabel("y [m]"); ax[5].set_xlabel("t [s]"); ax[5].legend(loc="upper right"); shade_mpc(ax[5])
 
-    sw = np.where(np.diff(mode) > 0.5)[0]
-    for s in sw:
+
+    # =====================================================================
+    # NOVITÀ: LINEE VERTICALI PER OGNI TRANSIZIONE DI STATO (FSM)
+    # =====================================================================
+    trans_idx = np.where(state_str[:-1] != state_str[1:])[0]
+    
+    # Etichetta dello stato iniziale all'istante t=0
+    if len(t) > 0:
+        ax[0].text(t[0], 1.05, f" {state_str[0].upper()}", transform=ax[0].get_xaxis_transform(),
+                   fontsize=9, color="black", fontweight="bold", alpha=0.7)
+
+    for idx in trans_idx:
+        t_trans = t[idx + 1]
+        new_state = state_str[idx + 1]
+        
+        # Disegna la linea tratteggiata su tutti i grafici
         for axi in ax:
-            axi.axvline(t[s + 1], color="orange", lw=1.0)
+            axi.axvline(t_trans, color="black", linestyle="--", lw=1.2, alpha=0.6)
+        
+        # Scrive il nome del nuovo stato sopra il primo grafico
+        ax[0].text(t_trans, 1.05, f" {new_state.upper()}", transform=ax[0].get_xaxis_transform(),
+                   fontsize=9, color="black", fontweight="bold", alpha=0.7)
+    # =====================================================================
 
-    fig.suptitle("Volo CrazySim — zona arancione = MPC attivo")
+    fig.suptitle("Volo CrazySim — Transizioni FSM e MPC attivo (sfondo arancione)", y=0.99)
     fig.tight_layout()
+    # Lasciamo spazio in alto per i nomi degli stati
+    fig.subplots_adjust(top=0.94)
+    
     png = f"last_run_plots/flight_{stamp}.png"; fig.savefig(png, dpi=110)
     print(f"plot salvato: {png}")
     plt.show()
@@ -338,6 +366,8 @@ def main():
     ctrl = HybridController(dt=DT)
     rows = []
     t_start = time.perf_counter()
+    RAMP_T = 0.5
+    V_LAND = 0.5   # m/s, velocita' fissa della diagonale di landing (rif. PID)
 
     with SyncCrazyflie(URI, cf=Crazyflie(rw_cache="./cache")) as scf:
         cf = scf.cf
@@ -348,6 +378,11 @@ def main():
 
         state = "rising"; wp_counter = RISING; old_wp_id = IDLE
         stop_delta = 0.1; WP = None
+        prev_wp = wp_counter
+        seg_t0 = time.perf_counter()
+
+        dynamic_p_start = None
+        land_t0 = None
 
         try:
             with SyncLogger(scf, build_logconf()) as logger:
@@ -370,9 +405,35 @@ def main():
                     if state == "idle":
                         break
 
-                    p_LOS, _ = LOS_wp(pos, WP[old_wp_id], WP[wp_counter],
-                                      delta=LOS_DELTA, stop_delta=stop_delta)
                     landing = (state == "landing")
+
+                    # rampa TEMPORALE del look-ahead: al cambio segmento delta_eff
+                    # riparte da 0 e sale a LOS_DELTA in RAMP_T secondi (indipendente da s)
+                    if wp_counter != prev_wp:
+                        if wp_counter != LANDING:
+                            seg_t0 = time.perf_counter()
+                        prev_wp = wp_counter
+                    elapsed = time.perf_counter() - seg_t0
+                    delta_eff = LOS_DELTA * min(1.0, elapsed / RAMP_T)
+                    #delta_eff = LOS_DELTA
+                    if state == "landing" and dynamic_p_start is not None:
+                        # --- riferimento DIAGONALE a velocita' fissa, dipendente solo dal tempo ---
+                        # retta da dynamic_p_start (punto d'ingresso landing) al target di touchdown,
+                        # percorsa a V_LAND [m/s]. Feedforward puro: NON dipende da pos -> niente
+                        # accoppiamento/ondulazione. Serve al PID finche' l'MPC non subentra.
+                        p_end_land = WP[LANDING]                      # (target_x, target_y, Z_LAND)
+                        seg = p_end_land - dynamic_p_start
+                        L = np.linalg.norm(seg)
+                        tau = time.perf_counter() - land_t0
+                        if L < 1e-6:
+                            p_LOS = p_end_land.copy()
+                        else:
+                            s_lin = min(L, V_LAND * tau)              # distanza percorsa lungo la retta
+                            p_LOS = dynamic_p_start + (s_lin / L) * seg
+                    else:
+                        current_p_start = WP[old_wp_id]
+                        p_LOS, _ = LOS_wp(pos, current_p_start, WP[wp_counter],
+                                          delta=delta_eff, stop_delta=stop_delta)
 
                     t0 = time.perf_counter()
                     force, roll, pitch, yaw, mode = ctrl.compute(
@@ -396,8 +457,11 @@ def main():
                     distance = np.linalg.norm(pos_e)
                     if state == "hold":
                         d_xy = np.linalg.norm(TARGET_XY - pos[0:2])
-                        if d_xy <= Z_HOLD / ALPHA_CONE:
+                        if d_xy <= (Z_HOLD / ALPHA_CONE):
+                        #if d_xy <= (Z_HOLD / ALPHA_CONE):
                             state = "landing"; old_wp_id, wp_counter, stop_delta = HOLD, LANDING, 0.1
+                            dynamic_p_start = p_LOS.copy()
+                            land_t0 = time.perf_counter()
                     elif distance <= stop_delta:
                         if state == "rising":
                             state = "nav_to_wp"; old_wp_id, wp_counter, stop_delta = RISING, NAV, 0.3

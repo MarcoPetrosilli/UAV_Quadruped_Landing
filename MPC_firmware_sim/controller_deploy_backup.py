@@ -53,6 +53,11 @@ class HybridController:
         self.Q_vrt = np.diag([30.0, 15.0])
         self.R_vrt = np.diag([15.0])
 
+        #self.Q_hrz = np.diag([20.0, 20.0, 15.0, 15.0])
+        #self.R_hrz = np.diag([10.0, 10.0])
+        #self.Q_vrt = np.diag([30.0, 30.0])
+        #self.R_vrt = np.diag([15.0])
+
         # ---- Cone CBF (glideslope) -----------------------------------------
         self.cbf_cone_enabled = True
         #self.alpha_cone = 1.72
