@@ -12,7 +12,9 @@ drone_landing/__init__.py
 drone_landing/controller_deploy.py
 drone_landing/controller_deploy_LOS.py
 drone_landing/controller_deploy_LOS_no_Transition.py
+drone_landing/controller_deploy_test.py
 drone_landing/main_alpha_landing.py
 drone_landing/main_alpha_landing_LOS.py
+drone_landing/main_rising_test.py
 launch/landing.launch.py
 resource/drone_landing

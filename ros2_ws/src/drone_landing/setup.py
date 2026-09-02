@@ -25,6 +25,7 @@ setup(
         "console_scripts": [
             # ros2 run drone_landing landing_node
             "landing_node = drone_landing.main_alpha_landing:main",
+            "rising_test_node = drone_landing.main_rising_test:main",
         ],
     },
 )

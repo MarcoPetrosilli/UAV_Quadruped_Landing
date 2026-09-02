@@ -13,8 +13,10 @@ running build_py
 creating /home/lab/ros2_ws/build/drone_landing/build
 creating /home/lab/ros2_ws/build/drone_landing/build/lib
 creating /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
+copying drone_landing/controller_deploy_test.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
 copying drone_landing/main_alpha_landing_LOS.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
 copying drone_landing/main_alpha_landing.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
+copying drone_landing/main_rising_test.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
 copying drone_landing/controller_deploy_LOS_no_Transition.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
 copying drone_landing/controller_deploy.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
 copying drone_landing/controller_deploy_LOS.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
@@ -22,14 +24,18 @@ copying drone_landing/__init__.py -> /home/lab/ros2_ws/build/drone_landing/build
 running install
 running install_lib
 creating /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
+copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/controller_deploy_test.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
 copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/main_alpha_landing_LOS.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
 copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/main_alpha_landing.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
+copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/main_rising_test.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
 copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/controller_deploy_LOS_no_Transition.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
 copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/controller_deploy.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
 copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/controller_deploy_LOS.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
 copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/__init__.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
+byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy_test.py to controller_deploy_test.cpython-310.pyc
 byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/main_alpha_landing_LOS.py to main_alpha_landing_LOS.cpython-310.pyc
 byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/main_alpha_landing.py to main_alpha_landing.cpython-310.pyc
+byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/main_rising_test.py to main_rising_test.cpython-310.pyc
 byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy_LOS_no_Transition.py to controller_deploy_LOS_no_Transition.cpython-310.pyc
 byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy.py to controller_deploy.cpython-310.pyc
 byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy_LOS.py to controller_deploy_LOS.cpython-310.pyc
@@ -46,4 +52,5 @@ running install_egg_info
 Copying ../../build/drone_landing/drone_landing.egg-info to /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing-0.1.0-py3.10.egg-info
 running install_scripts
 Installing landing_node script to /home/lab/ros2_ws/install/drone_landing/lib/drone_landing
+Installing rising_test_node script to /home/lab/ros2_ws/install/drone_landing/lib/drone_landing
 writing list of installed files to '/home/lab/ros2_ws/build/drone_landing/install.log'

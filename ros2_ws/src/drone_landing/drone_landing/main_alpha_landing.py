@@ -28,8 +28,10 @@ DT = 0.02
 G = 9.81
 
 # ---- calibrazione spinta -----------------------------------------------------
-HOVER_CMD = 32000
-MASS = 0.0379                      
+#HOVER_CMD = 32000
+HOVER_CMD = 32748
+MASS = 0.0379
+#MASS = 0.029                      
 HOVER_FORCE = MASS * G
 
 
@@ -494,6 +496,7 @@ class LandingNode(Node):
             return
 
         landing = (self.state == "landing")
+        
         if self.seg_p_start is None:
             self.seg_p_start = self.WP[self.old_wp_id].copy()
 
@@ -596,7 +599,7 @@ class LandingNode(Node):
         # rioscillare sopra stop_delta, lasciando il drone "appeso" nello stato
         # landing per secondi (l'MPC continua a tenere z al riferimento). Questo
         # produceva l'hovering finale e i campioni fuori-cono al vertice.
-        if self.state == "landing" and pos[2] <= Z_LAND:
+        if self.state == "landing" and pos[2] <= Z_LAND+1e-2:
             self.state = "idle"; self.old_wp_id, self.wp_counter = LANDING, IDLE
             return
 
