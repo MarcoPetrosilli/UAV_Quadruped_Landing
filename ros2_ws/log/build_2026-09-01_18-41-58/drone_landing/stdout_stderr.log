@@ -1,0 +1,49 @@
+running egg_info
+creating ../../build/drone_landing/drone_landing.egg-info
+writing ../../build/drone_landing/drone_landing.egg-info/PKG-INFO
+writing dependency_links to ../../build/drone_landing/drone_landing.egg-info/dependency_links.txt
+writing entry points to ../../build/drone_landing/drone_landing.egg-info/entry_points.txt
+writing requirements to ../../build/drone_landing/drone_landing.egg-info/requires.txt
+writing top-level names to ../../build/drone_landing/drone_landing.egg-info/top_level.txt
+writing manifest file '../../build/drone_landing/drone_landing.egg-info/SOURCES.txt'
+reading manifest file '../../build/drone_landing/drone_landing.egg-info/SOURCES.txt'
+writing manifest file '../../build/drone_landing/drone_landing.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/lab/ros2_ws/build/drone_landing/build
+creating /home/lab/ros2_ws/build/drone_landing/build/lib
+creating /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
+copying drone_landing/main_alpha_landing_LOS.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
+copying drone_landing/main_alpha_landing.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
+copying drone_landing/controller_deploy_LOS_no_Transition.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
+copying drone_landing/controller_deploy.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
+copying drone_landing/controller_deploy_LOS.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
+copying drone_landing/__init__.py -> /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing
+running install
+running install_lib
+creating /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
+copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/main_alpha_landing_LOS.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
+copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/main_alpha_landing.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
+copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/controller_deploy_LOS_no_Transition.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
+copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/controller_deploy.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
+copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/controller_deploy_LOS.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
+copying /home/lab/ros2_ws/build/drone_landing/build/lib/drone_landing/__init__.py -> /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing
+byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/main_alpha_landing_LOS.py to main_alpha_landing_LOS.cpython-310.pyc
+byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/main_alpha_landing.py to main_alpha_landing.cpython-310.pyc
+byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy_LOS_no_Transition.py to controller_deploy_LOS_no_Transition.cpython-310.pyc
+byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy.py to controller_deploy.cpython-310.pyc
+byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy_LOS.py to controller_deploy_LOS.cpython-310.pyc
+byte-compiling /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__init__.py to __init__.cpython-310.pyc
+running install_data
+creating /home/lab/ros2_ws/install/drone_landing/share/ament_index
+creating /home/lab/ros2_ws/install/drone_landing/share/ament_index/resource_index
+creating /home/lab/ros2_ws/install/drone_landing/share/ament_index/resource_index/packages
+copying resource/drone_landing -> /home/lab/ros2_ws/install/drone_landing/share/ament_index/resource_index/packages
+copying package.xml -> /home/lab/ros2_ws/install/drone_landing/share/drone_landing
+creating /home/lab/ros2_ws/install/drone_landing/share/drone_landing/launch
+copying launch/landing.launch.py -> /home/lab/ros2_ws/install/drone_landing/share/drone_landing/launch
+running install_egg_info
+Copying ../../build/drone_landing/drone_landing.egg-info to /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing-0.1.0-py3.10.egg-info
+running install_scripts
+Installing landing_node script to /home/lab/ros2_ws/install/drone_landing/lib/drone_landing
+writing list of installed files to '/home/lab/ros2_ws/build/drone_landing/install.log'

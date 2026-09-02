@@ -1,0 +1,3 @@
+[console_scripts]
+landing_node = drone_landing.main_alpha_landing:main
+
