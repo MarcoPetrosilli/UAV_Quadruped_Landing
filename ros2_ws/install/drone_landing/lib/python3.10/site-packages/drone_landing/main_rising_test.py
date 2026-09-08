@@ -1,9 +1,11 @@
 """
 main_rising_test.py  —  PROVA MINIMALE su drone reale.
 
-Solo due stati: rising (sale a Z_TEST) -> landing (torna giu' a Z_LAND),
-entrambi gestiti dal PID puro (self.ctrl.compute con landing=False, quindi
-l'MPC non si attiva MAI: e' una prova del solo anello PID di reach).
+Due stati verticali: rising (sale a Z_TEST) -> landing (torna giu' a Z_LAND).
+Il landing passa da self.ctrl.compute(landing=(self.state=="landing")): il
+gate reachable-set interno decide da solo quando passare da PID a MPC (mode
+0->1 nei dati salvati), come nel main vero — qui e' la prova minima per
+validare l'MPC prima di integrarlo nella missione completa.
 
 Riprende lo stile del main vero: nodo ROS + timer a 1/DT, logger cflib
 asincrono, profilo di velocita' trapezoidale con feed-forward v_ff instradato
@@ -39,9 +41,14 @@ DT = 0.02
 G = 9.81
 
 # ---- calibrazione spinta -----------------------------------------------------
-HOVER_CMD = 38000
+#HOVER_CMD = 43000
+HOVER_CMD = 51925
 #MASS = 0.0379
-MASS = 0.029
+MASS = 0.0500
+
+#TARGET_XY = np.array([0, -1])
+TARGET_VEL = np.array([0.0, -0.2, 0.0]) 
+
 HOVER_FORCE = MASS * G
 
 
@@ -54,7 +61,7 @@ def rad2deg(x):
 
 
 # ---- missione minimale: solo salita e discesa verticale ----------------------
-Z_TEST = 1.40          # quota di prova [m]
+Z_TEST = 1.90          # quota di prova [m]
 Z_LAND = 0.1          # quota di "atterraggio" [m]
 A_XY = 0.17
 IDLE, RISING, LANDING = 0, 1, 2
@@ -143,7 +150,7 @@ def save_and_plot(rows):
     ax_est = G * np.tan(a["pitch"])
     ay_est = -G * np.tan(a["roll"])
 
-    fig, ax = plt.subplots(7, 1, sharex=True, figsize=(11, 12))
+    fig, ax = plt.subplots(8, 1, sharex=True, figsize=(11, 13.5))
 
     ax[0].plot(t, a["z"], label="z", lw=1.5)
     ax[0].plot(t, a["carrot_z"], label="carrot_z", lw=1, ls="--")
@@ -178,15 +185,33 @@ def save_and_plot(rows):
     ax[6].plot(t, ax_est, label="ax (da pitch)", color="tab:blue", lw=1.3)
     ax[6].plot(t, ay_est, label="ay (da roll)", color="tab:orange", lw=1.3)
     ax[6].axhline(0, color="k", lw=0.6)
-    ax[6].set_ylabel("a_xy [m/s^2]"); ax[6].set_xlabel("t [s]")
+    ax[6].set_ylabel("a_xy [m/s^2]")
     ax[6].legend(loc="upper right")
+
+    ax[7].plot(t, a["solve_ms"], color="tab:brown", lw=1.0)
+    ax[7].set_ylabel("solve MPC [ms]"); ax[7].set_xlabel("t [s]")
+    mpc_solve = a["solve_ms"][mode > 0.5]
+    if len(mpc_solve):
+        print(f"solve MPC: medio {np.mean(mpc_solve):.1f} ms, max {np.max(mpc_solve):.1f} ms, "
+              f"n={len(mpc_solve)}")
+
+    # evidenzia dove l'MPC e' davvero attivo (mode==1), su tutti i pannelli
+    mpc_on = mode > 0.5
+    if mpc_on.any():
+        edges = np.where(np.diff(mpc_on.astype(int)) != 0)[0] + 1
+        bounds = np.concatenate(([0], edges, [len(mpc_on)]))
+        for i in range(len(bounds) - 1):
+            lo, hi = bounds[i], bounds[i + 1]
+            if mpc_on[lo]:
+                for axi in ax:
+                    axi.axvspan(t[lo], t[min(hi, len(t) - 1)], color="orange", alpha=0.15)
 
     trans_idx = np.where(state_str[:-1] != state_str[1:])[0]
     for idx in trans_idx:
         for axi in ax:
             axi.axvline(t[idx + 1], color="black", linestyle="--", lw=1.0, alpha=0.5)
 
-    fig.suptitle("Prova RISING + LANDING PID puro — drone reale", y=0.99)
+    fig.suptitle("Prova RISING + LANDING (PID + MPC in landing) — drone reale", y=0.99)
     fig.tight_layout(); fig.subplots_adjust(top=0.95)
     png = f"last_run_plots/flight_{stamp}.png"; fig.savefig(png, dpi=110)
     print(f"plot salvato: {png}")
@@ -199,7 +224,7 @@ class RisingTestNode(Node):
         super().__init__("rising_test_node")
 
         cflib.crtp.init_drivers()
-        self.ctrl = HybridController(dt=DT)
+        self.ctrl = HybridController(dt=DT, mass=MASS)
         self.rows = []
         self.t_start = time.perf_counter()
         self.RAMP_T = 0.8
@@ -332,9 +357,9 @@ class RisingTestNode(Node):
             hx, hy = pos[0], pos[1]
             self.WP = {
                 "rising":  np.array([hx, hy, Z_TEST]),
-                "nav":  np.array([hx, hy-1.5, Z_TEST]),
-                "hold":  np.array([hx+1.5, hy-1.5, Z_TEST]),
-                "landing": np.array([hx+1.5, hy-1.5, Z_LAND]),
+                "nav":  np.array([hx, hy+1, Z_TEST]),
+                "hold":  np.array([hx, hy-1, Z_TEST]),
+                "landing": np.array([hx, hy-1, Z_LAND]),
             }
             self.seg_p_start = np.array([hx, hy, pos[2]])
 
@@ -368,11 +393,29 @@ class RisingTestNode(Node):
 
         self.last_p_LOS = p_LOS.copy()
 
-        # --- PID puro: landing=False => l'MPC non si attiva mai ---
+        # --- gate MPC: si attiva solo qui, e solo se anche dentro il reachable
+        #     set (lo decide internamente compute()) — prima era False fisso,
+        #     quindi l'MPC non partiva mai anche attraversando "landing"
+        landing = (self.state == "landing")
+
+
+        step_disp = TARGET_VEL * DT
+        
+        #TARGET_XY += step_disp[0:2]
+        self.WP["hold"] += step_disp
+        self.WP["landing"] += step_disp
+
+        if self.state in ["hold", "landing"]:
+            current_target_vel = TARGET_VEL
+            #if self.dynamic_p_start is not None:
+            #    self.dynamic_p_start += step_disp
+        else:
+            current_target_vel = np.zeros(3)
+
         t0 = time.perf_counter()
         force, roll, pitch, yaw, mode = self.ctrl.compute(
-            pos, vel, p_LOS, target_yaw=0.0, target_vel=np.zeros(3), ramp_ref_vel=v_ff,
-            a_xy_lim=A_XY, final_pos=self.WP["landing"], landing=False)
+            pos, vel, p_LOS, target_yaw=0.0, target_vel=current_target_vel, ramp_ref_vel=v_ff,
+            a_xy_lim=A_XY, final_pos=self.WP["landing"], landing=landing)
         solve_ms = (time.perf_counter() - t0) * 1000.0
 
         cmd = force_to_cmd(force)
@@ -386,7 +429,7 @@ class RisingTestNode(Node):
             force=force, cmd=cmd, az=az, roll=roll, pitch=pitch, solve_ms=solve_ms,
             ref_vx=v_ff[0], ref_vy=v_ff[1], ref_vz=v_ff[2]))
 
-        print(f"[{self.state:8s}] z={pos[2]:5.2f} carrot_z={p_LOS[2]:5.2f} "
+        print(f"[{self.state:8s} mode={mode}] z={pos[2]:5.2f} carrot_z={p_LOS[2]:5.2f} "
               f"vz={vel[2]:+5.2f} cmd={cmd:5d}")
 
         # --- transizione: distanza raggiunta E rampa completata ---

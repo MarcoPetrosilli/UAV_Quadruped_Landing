@@ -414,7 +414,7 @@ class LandingNode(Node):
         super().__init__("drone_landing_node")
 
         cflib.crtp.init_drivers()
-        self.ctrl = HybridController(dt=DT)
+        self.ctrl = HybridController(dt=DT, mass=MASS)
         self.rows = []
         self.t_start = time.perf_counter()
         self.RAMP_T = 1.0

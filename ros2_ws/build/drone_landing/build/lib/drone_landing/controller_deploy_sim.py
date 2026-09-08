@@ -45,10 +45,6 @@ class HybridController:
         self.B_vrt = np.array([[0], [self.mpc_dt]])
 
         # ---- DSL PID gains (reach) -----------------------------------------
-        #self.P_COEFF_FOR = np.array([.4, .4, 1.25])
-        #self.I_COEFF_FOR = np.array([.0, .0, .05])
-        #self.D_COEFF_FOR = np.array([.2, .2, .5])
-
         self.P_COEFF_FOR = np.array([.4, .4, 1.25])
         self.I_COEFF_FOR = np.array([.0, .0, .05])
         self.D_COEFF_FOR = np.array([.2, .2, .5])

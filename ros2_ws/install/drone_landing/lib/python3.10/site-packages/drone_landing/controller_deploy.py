@@ -22,7 +22,7 @@ from scipy.spatial.transform import Rotation
 
 
 class HybridController:
-    def __init__(self, g=9.81, dt=0.02, mass=0.0379,
+    def __init__(self, g=9.81, dt=0.02, mass=0.029,
                  polytope_path="reachable_polytope.npz"):
         self.g = g
         self.MPC_FREQ_DIVIDER = 2 # MPC running at 25 Hz
@@ -45,6 +45,10 @@ class HybridController:
         self.B_vrt = np.array([[0], [self.mpc_dt]])
 
         # ---- DSL PID gains (reach) -----------------------------------------
+        #self.P_COEFF_FOR = np.array([.4, .4, 1.25])
+        #self.I_COEFF_FOR = np.array([.0, .0, .05])
+        #self.D_COEFF_FOR = np.array([.2, .2, .5])
+
         self.P_COEFF_FOR = np.array([.4, .4, 1.25])
         self.I_COEFF_FOR = np.array([.0, .0, .05])
         self.D_COEFF_FOR = np.array([.2, .2, .5])
@@ -54,10 +58,11 @@ class HybridController:
         #self.D_COEFF_FOR = np.array([.15, .15, .5])
 
         # ---- MPC weights ---------------------------------------------------
-        #self.Q_hrz = np.diag([20.0, 20.0, 15.0, 15.0])
-        #self.R_hrz = np.diag([20.0, 20.0])
-        #self.Q_vrt = np.diag([20.0, 15.0])
-        #self.R_vrt = np.diag([15.0])
+
+        #self.Q_hrz = np.diag([2.0, 2.0, 1.5, 1.5])
+        #self.R_hrz = np.diag([5.0, 5.0])
+        #self.Q_vrt = np.diag([2.0, 1.5])
+        #self.R_vrt = np.diag([5.0])
 
         self.Q_hrz = np.diag([2.0, 2.0, 1.5, 1.5])
         self.R_hrz = np.diag([5.0, 5.0])
@@ -94,7 +99,7 @@ class HybridController:
         # garantita, quindi il comando puo' avere un gradino netto al passaggio.
         # Si sfuma linearmente dall'ultima uscita PID (ancora) all'uscita MPC su
         # blend_duration secondi, poi MPC puro.
-        self.blend_duration = 0.8
+        self.blend_duration = 0.3
         self.blend_steps_total = max(1, int(round(self.blend_duration / self.dt)))
         self.blend_steps_left = 0
         self.blend_anchor_force = self.GRAVITY
