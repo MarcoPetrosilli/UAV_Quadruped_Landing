@@ -50,11 +50,11 @@ def main():
     while True:
         for name, d in drones.items():
 
-            pos = None            # TODO: actual drone position (state/observation)
+            # TODO: read actual drone position (state/observation)
 
-            target = d.target()   # TODO: RL policy computes control action toward 'target'
+            # TODO: RL policy computes control action toward 'target'
 
-            d.step(pos)           # TODO: Make drone step from actual pos
+            # TODO: Make drone step from actual pos
 
         if all(d.state == "idle" for d in drones.values()):
             break
