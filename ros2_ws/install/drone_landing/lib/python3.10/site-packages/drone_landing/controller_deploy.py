@@ -22,7 +22,7 @@ from scipy.spatial.transform import Rotation
 
 
 class HybridController:
-    def __init__(self, g=9.81, dt=0.02, mass=0.029,
+    def __init__(self, g=9.81, dt=0.02, mass=0.0379,
                  polytope_path="reachable_polytope.npz"):
         self.g = g
         self.MPC_FREQ_DIVIDER = 2 # MPC running at 25 Hz
@@ -45,10 +45,6 @@ class HybridController:
         self.B_vrt = np.array([[0], [self.mpc_dt]])
 
         # ---- DSL PID gains (reach) -----------------------------------------
-        #self.P_COEFF_FOR = np.array([.4, .4, 1.25])
-        #self.I_COEFF_FOR = np.array([.0, .0, .05])
-        #self.D_COEFF_FOR = np.array([.2, .2, .5])
-
         self.P_COEFF_FOR = np.array([.4, .4, 1.25])
         self.I_COEFF_FOR = np.array([.0, .0, .05])
         self.D_COEFF_FOR = np.array([.2, .2, .5])
@@ -58,16 +54,15 @@ class HybridController:
         #self.D_COEFF_FOR = np.array([.15, .15, .5])
 
         # ---- MPC weights ---------------------------------------------------
-
-        #self.Q_hrz = np.diag([2.0, 2.0, 1.5, 1.5])
-        #self.R_hrz = np.diag([5.0, 5.0])
-        #self.Q_vrt = np.diag([2.0, 1.5])
-        #self.R_vrt = np.diag([5.0])
+        #self.Q_hrz = np.diag([20.0, 20.0, 15.0, 15.0])
+        #self.R_hrz = np.diag([20.0, 20.0])
+        #self.Q_vrt = np.diag([20.0, 15.0])
+        #self.R_vrt = np.diag([15.0])
 
         self.Q_hrz = np.diag([2.0, 2.0, 1.5, 1.5])
         self.R_hrz = np.diag([5.0, 5.0])
-        self.Q_vrt = np.diag([2.0, 1.5])
-        self.R_vrt = np.diag([5.0])
+        self.Q_vrt = np.diag([3.0, 2.5])
+        self.R_vrt = np.diag([8.0])
         
         # ---- Cone CBF (glideslope) -----------------------------------------
         self.cbf_cone_enabled = True
@@ -82,6 +77,24 @@ class HybridController:
         self.gamma_cbf = 0.5          # mantenuto per retro-compatibilita' / riferimento
         self.gamma1_cbf = 0.5         # livello 1
         self.gamma2_cbf = 0.5         # livello 2
+        # ---- effetto suolo nel modello verticale ----------------------------
+        # In prossimita' del suolo la stessa spinta comandata produce piu'
+        # spinta reale: T_IGE/T_OGE = 1/(1-(R_eff/4h)^2)  (Cheeseman-Bennett).
+        # R_eff = 40 mm (contro i 22.5 mm dell'elica singola) tiene conto dei
+        # 4 rotori e del corpo: con questo valore il modello da' -1.8% di
+        # comando necessario a h=7.5 cm e -0.6% a 12.5 cm, in linea con i
+        # voli del 16-17/9 (-0.2 / -1.3% misurati tra 7 e 15 cm, nulli sopra
+        # 0.3 m). Entra nel modello come accelerazione nota:
+        #     z_{k+1} = A z_k + B (u_k + a_ge(h_k)),   a_ge = g*(k_IGE - 1)
+        # valutata sulla traiettoria z predetta al solve precedente, quindi
+        # il problema resta un QP (termine affine, parametro).
+        self.ge_enabled = True
+        self.ge_r_eff = 0.045        # raggio efficace [m]
+        #self.ge_k_max = 1.1         # saturazione del guadagno di spinta
+        self.ge_k_max = 1.1
+        self.z_ground = 0.0          # quota del suolo [m] (da mocap, la passa il main)
+        self.log_ge0 = float("nan")  # a_ge del primo passo [m/s^2], solo log
+
         self.z_cut = 1.0
         self.r_base = 0.3
         self.rho_slack = 1e4        # peso penalita' slack del cono (grande = slack usato solo se necessario)
@@ -93,13 +106,22 @@ class HybridController:
         self.last_force = self.GRAVITY
         self.last_euler = np.zeros(3)
 
+        # ---- diagnostica (solo log, non entra nel controllo) ---------------
+        # log_az_mpc: primo ingresso del solve verticale [m/s^2], PRIMA del blend
+        # log_eps0 / log_eps_max: slack del cono al primo passo e massimo
+        # sull'orizzonte (0 = vincolo rispettato senza rilassamento).
+        # NaN in modalita' PID; nei tick senza solve restano all'ultimo valore.
+        self.log_az_mpc = float("nan")
+        self.log_eps0 = float("nan")
+        self.log_eps_max = float("nan")
+
         # ---- bumpless transfer PID -> MPC ------------------------------
         # Al gate le due leggi di controllo vengono scambiate istantaneamente:
         # PID e MPC calcolano forza/assetto in modo indipendente, senza continuita'
         # garantita, quindi il comando puo' avere un gradino netto al passaggio.
         # Si sfuma linearmente dall'ultima uscita PID (ancora) all'uscita MPC su
         # blend_duration secondi, poi MPC puro.
-        self.blend_duration = 0.3
+        self.blend_duration = 0.8
         self.blend_steps_total = max(1, int(round(self.blend_duration / self.dt)))
         self.blend_steps_left = 0
         self.blend_anchor_force = self.GRAVITY
@@ -146,6 +168,7 @@ class HybridController:
         self.p_xref_vrt = cp.Parameter(2)
         self.p_z_plat = cp.Parameter()
         self.p_r_cone = cp.Parameter(self.N + 1)
+        self.p_ge = cp.Parameter(self.N)          # accelerazione da effetto suolo
         # slack del cono: una variabile >=0 per ogni passo, penalizzata nel costo.
         # Rende il QP SEMPRE feasible: quando il cono e' impossibile da rispettare
         # (es. h->0 al vertice), il vincolo viene violato del minimo eps_k invece
@@ -168,7 +191,8 @@ class HybridController:
         for k in range(self.N):
             cost_vrt += cp.sum_squares(cp.multiply(wQv, self.x_vrt[:, k] - self.p_xref_vrt))
             cost_vrt += cp.sum_squares(cp.multiply(wRv, self.u_vrt[:, k]))
-            cons_vrt += [self.x_vrt[:, k + 1] == self.A_vrt @ self.x_vrt[:, k] + self.B_vrt @ self.u_vrt[:, k]]
+            cons_vrt += [self.x_vrt[:, k + 1] == self.A_vrt @ self.x_vrt[:, k]
+                         + self.B_vrt @ (self.u_vrt[:, k] + self.p_ge[k])]
             cons_vrt += [cp.abs(self.u_vrt[:, k]) <= 9.0]
 
             # --- livello 2 (DHOCBF grado 2), rilassato con slack ---
@@ -194,6 +218,7 @@ class HybridController:
         self.p_xref_vrt.value = np.zeros(2)
         self.p_z_plat.value = 0.0
         self.p_r_cone.value = np.full(self.N + 1, -100.0)
+        self.p_ge.value = np.zeros(self.N)
         self.prob_vrt.solve(solver=cp.OSQP)
         print("Warm-up completato.")
 
@@ -202,8 +227,10 @@ class HybridController:
     # ==================================================================== #
     def compute(self, cur_pos, cur_vel, target_pos, target_yaw=0.0,
                 target_vel=None, a_xy_lim=0.17, final_pos=None, landing=False,
-                ramp_ref_vel=None):
+                ramp_ref_vel=None, z_ground=None):
         self.control_counter += 1
+        if z_ground is not None:
+            self.z_ground = float(z_ground)
         cur_pos = np.asarray(cur_pos, float)
         cur_vel = np.asarray(cur_vel, float)
         target_pos = np.asarray(target_pos, float)
@@ -246,6 +273,10 @@ class HybridController:
             mode = 1
         else:
             # ---------------- PID REACH MODE ----------------
+            self.log_az_mpc = float("nan")
+            self.log_eps0 = float("nan")
+            self.log_eps_max = float("nan")
+            self.log_ge0 = float("nan")
             self.mpc_step = 0
             force, euler = self._pid_reach(
                 cur_pos, cur_vel, target_pos, target_yaw, target_vel + ramp_ref_vel)
@@ -339,8 +370,33 @@ class HybridController:
             return 0.0, 0.0, None
         return float(self.u_hrz[0, 0].value), float(self.u_hrz[1, 0].value), self.x_hrz.value
 
+    def _ge_accel(self, h):
+        """a_ge(h) [m/s^2]: accelerazione in piu' a parita' di comando, in effetto suolo."""
+        h = np.maximum(np.asarray(h, float), 1e-3)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            k = 1.0 / np.maximum(1.0 - (self.ge_r_eff / (4.0 * h)) ** 2, 1e-3)
+        k = np.clip(k, 1.0, self.ge_k_max)
+        return self.g * (k - 1.0)
+
+    def _ge_profile(self, cur_z, cur_vz):
+        """a_ge sui passi 0..N-1, valutata sulla z predetta al solve precedente."""
+        if not self.ge_enabled:
+            return np.zeros(self.N)
+        zp = self.x_vrt[0, :].value
+        if zp is None or not np.all(np.isfinite(zp)):
+            # primo solve: propagazione a velocita' costante
+            zp = cur_z + cur_vz * self.mpc_dt * np.arange(self.N + 1)
+        else:
+            # la soluzione precedente e' shiftata di un passo
+            zp = np.concatenate([zp[1:], zp[-1:]])
+        return self._ge_accel(zp[:self.N] - self.z_ground)
+
     def _mpc_vertical(self, cur_z, cur_vz, wp, target_vel, x_pred=None, y_pred=None, apply_cone=False):
         use_cone = (apply_cone and self.cbf_cone_enabled and x_pred is not None and y_pred is not None)
+
+        ge = self._ge_profile(cur_z, cur_vz)
+        self.p_ge.value = ge
+        self.log_ge0 = float(ge[0])
 
         self.p_cur_vrt.value = np.array([cur_z, cur_vz])
         self.p_xref_vrt.value = np.array([wp[2], 0.0])
@@ -360,5 +416,19 @@ class HybridController:
         self.prob_vrt.solve(solver=cp.OSQP, warm_start=True, max_iter=5000, eps_abs=1e-3, eps_rel=1e-3)
         
         if self.u_vrt[0, 0].value is None:
+            self.log_az_mpc = float("nan")
+            self.log_eps0 = float("nan")
+            self.log_eps_max = float("nan")
             return 0.0
-        return float(self.u_vrt[0, 0].value)
+        az = float(self.u_vrt[0, 0].value)
+        self.log_az_mpc = az
+        eps = self.eps_cone.value
+        if use_cone and eps is not None:
+            eps = np.maximum(np.asarray(eps, float), 0.0)   # OSQP puo' dare -1e-6
+            self.log_eps0 = float(eps[0])
+            self.log_eps_max = float(eps.max())
+        else:
+            # cono disattivato (solve orizzontale fallito): slack senza significato
+            self.log_eps0 = float("nan")
+            self.log_eps_max = float("nan")
+        return az

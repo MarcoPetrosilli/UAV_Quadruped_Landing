@@ -1,18 +1,16 @@
 /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy_sim.py
-/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/main_alpha_landing_LOS.py
 /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/main_alpha_landing.py
+/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/main_rising_test_Hover_test.py
 /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/main_rising_test.py
-/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy_LOS_no_Transition.py
 /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy.py
-/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/controller_deploy_LOS.py
+/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/main_rising_test (copy).py
 /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__init__.py
 /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__pycache__/controller_deploy_sim.cpython-310.pyc
-/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__pycache__/main_alpha_landing_LOS.cpython-310.pyc
 /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__pycache__/main_alpha_landing.cpython-310.pyc
+/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__pycache__/main_rising_test_Hover_test.cpython-310.pyc
 /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__pycache__/main_rising_test.cpython-310.pyc
-/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__pycache__/controller_deploy_LOS_no_Transition.cpython-310.pyc
 /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__pycache__/controller_deploy.cpython-310.pyc
-/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__pycache__/controller_deploy_LOS.cpython-310.pyc
+/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__pycache__/main_rising_test (copy).cpython-310.pyc
 /home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages/drone_landing/__pycache__/__init__.cpython-310.pyc
 /home/lab/ros2_ws/install/drone_landing/share/ament_index/resource_index/packages/drone_landing
 /home/lab/ros2_ws/install/drone_landing/share/drone_landing/package.xml

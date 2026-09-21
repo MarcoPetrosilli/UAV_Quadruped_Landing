@@ -16,6 +16,7 @@ from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
 
 import rclpy
+from rclpy.signals import SignalHandlerOptions
 from rclpy.node import Node
 
 try:
@@ -28,9 +29,10 @@ DT = 0.02
 G = 9.81
 
 # ---- calibrazione spinta -----------------------------------------------------
-#HOVER_CMD = 32000
+#HOVER_CMD = 25000
 HOVER_CMD = 32748
 MASS = 0.0379
+#MASS = 0.05
 #MASS = 0.029                      
 HOVER_FORCE = MASS * G
 
@@ -457,6 +459,7 @@ class LandingNode(Node):
         self.seg_p_start = None
         self.last_p_LOS = None   # ultima posizione reale della carota (per continuita' tra segmenti)
         self._finished = False
+        self._emergency = False   # True dopo il primo Ctrl+C: congela la piattaforma mobile
 
         # --- timer di controllo a 1/DT Hz: E' il loop ---
         self.timer = self.create_timer(DT, self.tick)
@@ -495,7 +498,10 @@ class LandingNode(Node):
             self._shutdown_flight()
             return
 
-        landing = (self.state == "landing")
+        if not self._emergency:
+            landing = (self.state == "landing")
+        else:
+            landing = False
         
         if self.seg_p_start is None:
             self.seg_p_start = self.WP[self.old_wp_id].copy()
@@ -512,13 +518,13 @@ class LandingNode(Node):
             self.prev_wp = self.wp_counter
         elapsed = time.perf_counter() - self.seg_t0
 
-        step_disp = TARGET_VEL * DT
+        step_disp = TARGET_VEL * DT if not self._emergency else np.zeros(3)
 
         TARGET_XY += step_disp[0:2]
         self.WP[HOLD] += step_disp
         self.WP[LANDING] += step_disp
 
-        if self.state in ["hold", "landing"]:
+        if self.state in ["hold", "landing"] and not self._emergency:
             current_target_vel = TARGET_VEL
             if self.dynamic_p_start is not None:
                 self.dynamic_p_start += step_disp
@@ -620,6 +626,35 @@ class LandingNode(Node):
                 P_start_xy = TARGET_XY - u_nav * dist_xy_start
                 self.WP[HOLD] = np.array([P_start_xy[0], P_start_xy[1], Z_HOLD])
 
+    def _start_emergency_landing(self):
+        """Primo Ctrl+C: invece di tagliare subito i motori (caduta libera dalla
+        quota attuale), passa in modalita' atterraggio verso un target creato al
+        volo esattamente sopra la posizione corrente — riusa la stessa rampa
+        trapezoidale + gate MPC del landing normale (stessa inizializzazione che
+        usa la transizione hold->landing). La piattaforma mobile viene congelata
+        (self._emergency=True) cosi' il target d'emergenza resta fermo invece di
+        continuare a seguirla. Un secondo Ctrl+C durante questa fase fa comunque
+        il taglio immediato (vedi main())."""
+        if self._finished:
+            return
+        data = self.latest_state
+        if data is None or self.WP is None:
+            self.get_logger().warn("Nessuna posizione disponibile: taglio motori diretto.")
+            self._shutdown_flight()
+            return
+        pos = np.array([data["stateEstimate.x"], data["stateEstimate.y"], data["stateEstimate.z"]])
+
+        self._emergency = True
+        self.WP[LANDING] = np.array([pos[0], pos[1], Z_LAND])
+        self.state = "landing"
+        self.old_wp_id, self.wp_counter, self.stop_delta = HOLD, LANDING, 0.05
+        self.dynamic_p_start = (self.last_p_LOS.copy() if self.last_p_LOS is not None
+                                 else self.WP[LANDING].copy())
+        self.land_t0 = time.perf_counter()
+        self.get_logger().warn(
+            f"ATTERRAGGIO DI EMERGENZA verso ({pos[0]:.2f}, {pos[1]:.2f}, {Z_LAND:.2f}) "
+            f"— piattaforma congelata — Ctrl+C di nuovo per taglio motori immediato.")
+
     def _shutdown_flight(self):
         """Fine missione: ferma motori, salva CSV/plot, chiude il nodo."""
         if self._finished:
@@ -649,12 +684,36 @@ class LandingNode(Node):
 
 
 def main(args=None):
-    rclpy.init(args=args)
+    # signal_handler_options=NO: rclpy per default installa un suo gestore di
+    # SIGINT che comincia a spegnere il context non appena arriva Ctrl+C, in
+    # parallelo/prima del nostro except KeyboardInterrupt — e' questo che
+    # invalidava il context (visto: "publisher's context is invalid" subito
+    # dopo il primo Ctrl+C). Disattivandolo, SIGINT arriva SOLO come
+    # KeyboardInterrupt Python, gestito per intero dal nostro codice.
+    rclpy.init(args=args, signal_handler_options=SignalHandlerOptions.NO)
     node = LandingNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        pass
+        try:
+            node._start_emergency_landing()
+            # NB: un secondo rclpy.spin()/spin_once() qui NON e' affidabile —
+            # dopo il primo SIGINT il context rclpy puo' gia' essere invalidato
+            # (visto empiricamente: "publisher's context is invalid" subito dopo
+            # il primo Ctrl+C), quindi spin() torna senza eseguire nessun tick e
+            # si cade nel taglio motori immediato. Il comando ai motori passa da
+            # cflib (radio/USB), indipendente da ROS: guidiamo il loop a mano.
+            t_emerg0 = time.perf_counter()
+            while not node._finished:
+                node.tick()
+                if time.perf_counter() - t_emerg0 > 15.0:   # tetto di sicurezza
+                    print("Atterraggio di emergenza troppo lungo: taglio motori.")
+                    break
+                time.sleep(DT)
+        except KeyboardInterrupt:
+            print("Ctrl+C di nuovo: taglio motori immediato!")
+        except Exception as e:
+            print(f"Errore durante l'atterraggio di emergenza: {e}")
     finally:
         # se interrotto a meta', prova a fermare i motori in sicurezza
         try:

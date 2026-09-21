@@ -42,7 +42,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
-MOCAP_TOPIC = '/cf_drone/pose'
+MOCAP_TOPIC = '/cf_drone_new/pose'
 DT = 0.02
 
 # ---- parametri di calibrazione (reale: piu' cauti che in sim) -----------
