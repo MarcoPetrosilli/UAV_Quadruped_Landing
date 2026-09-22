@@ -12,8 +12,6 @@ drone_landing/__init__.py
 drone_landing/controller_deploy.py
 drone_landing/controller_deploy_sim.py
 drone_landing/main_alpha_landing.py
-drone_landing/main_rising_test (copy).py
 drone_landing/main_rising_test.py
-drone_landing/main_rising_test_Hover_test.py
 launch/landing.launch.py
 resource/drone_landing

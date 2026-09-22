@@ -18,6 +18,7 @@ La piattaforma mobile e' ignorata: target statico, target_vel = 0.
 import numpy as np
 import cvxpy as cp
 import math
+import time
 from scipy.spatial.transform import Rotation
 
 
@@ -61,8 +62,8 @@ class HybridController:
 
         self.Q_hrz = np.diag([2.0, 2.0, 1.5, 1.5])
         self.R_hrz = np.diag([5.0, 5.0])
-        self.Q_vrt = np.diag([3.0, 2.5])
-        self.R_vrt = np.diag([8.0])
+        self.Q_vrt = np.diag([2.0, 1.5])
+        self.R_vrt = np.diag([5.0])
         
         # ---- Cone CBF (glideslope) -----------------------------------------
         self.cbf_cone_enabled = True
@@ -89,11 +90,45 @@ class HybridController:
         # valutata sulla traiettoria z predetta al solve precedente, quindi
         # il problema resta un QP (termine affine, parametro).
         self.ge_enabled = True
-        self.ge_r_eff = 0.045        # raggio efficace [m]
-        #self.ge_k_max = 1.1         # saturazione del guadagno di spinta
-        self.ge_k_max = 1.1
+        self.ge_r_eff = 0.041        # raggio efficace [m]: fit su 7 voli (17-21/9), RMS 0.7%
+        self.ge_k_max = 1.10         # protezione numerica (attiva solo sotto ~3.4 cm)
         self.z_ground = 0.0          # quota del suolo [m] (da mocap, la passa il main)
         self.log_ge0 = float("nan")  # a_ge del primo passo [m/s^2], solo log
+
+        # ---- MPC offset-free: disturbo costante stimato sull'asse z ----------
+        # Il modello verticale diventa
+        #     z_{k+1} = A z_k + B (u_k + a_ge,k + d)
+        # dove d [m/s^2] raccoglie tutto cio' che il modello non spiega (errore
+        # residuo di HOVER_CMD, effetto suolo reale diverso dal modello, flusso
+        # in discesa, batteria). d e' stimato con un osservatore a finestra:
+        # su finestre di DIST_WIN s si confronta la variazione di vz misurata
+        # con quella attesa dall'accelerazione comandata (+ effetto suolo), e
+        # la differenza media viene filtrata passa-basso con costante dist_tau.
+        # L'MPC usa d come termine noto costante sull'orizzonte: l'errore a
+        # regime va a zero (Pannocchia & Rawlings 2003; Maeder et al. 2009).
+        # Stima congelata vicino al suolo (la reazione del terreno non e' un
+        # disturbo da compensare) e con comando saturo; |d| limitato.
+        self.dist_enabled = True
+        self.dist_tau = 0.6          # costante del filtro [s]
+        self.dist_win = 0.10         # finestra di stima [s]
+        self.dist_max = 1.5          # |d| massimo [m/s^2] (~15% di g)
+        self.dist_freeze_h = 0.02    # sotto questa quota sul suolo la stima si ferma [m]
+        self.d_hat = 0.0
+        # Stessa struttura sul piano orizzontale: disturbi dx, dy [m/s^2] che
+        # raccolgono i bias costanti (baricentro non centrato, trim d'assetto,
+        # offset dell'IMU) responsabili dell'errore fisso di 2-4 cm visto al
+        # contatto (voli 175138, 175926). Costante piu' lunga dell'asse z per
+        # non inseguire la resistenza aerodinamica, che dipende dalla velocita'.
+        self.dist_xy_enabled = True
+        self.dist_xy_tau = 1.0       # [s]
+        self.dist_xy_max = 0.5       # |d_xy| massimo [m/s^2] (~3 deg di assetto)
+        self.d_xy = np.zeros(2)
+        self._obs_prev = None        # (a_cmd [ax, ay, az], a_ge, t) del tick precedente
+        self._obs_v0 = None          # velocita' [vx, vy, vz] a inizio finestra
+        self._obs_int = np.zeros(3)  # integrale di (a_cmd + a_ge) sulla finestra
+        self._obs_T = 0.0            # durata della finestra
+        self.log_d_hat = float("nan")
+        self.log_d_xy = np.full(2, float("nan"))
 
         self.z_cut = 1.0
         self.r_base = 0.3
@@ -147,14 +182,19 @@ class HybridController:
         self.p_cur_hrz = cp.Parameter(4)
         self.p_xref_hrz = cp.Parameter((4, self.N + 1))
         self.p_axy_lim = cp.Parameter(nonneg=True)
+        self.p_dxy = cp.Parameter(2)     # disturbo stimato [dx, dy] (offset-free)
+        self.p_uss = cp.Parameter(2)     # ingresso di equilibrio [dy/g, -dx/g]
+        E_hrz = np.array([[0, 0], [0, 0], [self.mpc_dt, 0], [0, self.mpc_dt]])
 
         wQh=np.sqrt(np.diag(self.Q_hrz)); wRh=np.sqrt(np.diag(self.R_hrz)); wQhT=np.sqrt(10.0)*wQh
         cost_hrz = 0
         cons_hrz = [self.x_hrz[:, 0] == self.p_cur_hrz]
         for k in range(self.N):
             cost_hrz += cp.sum_squares(cp.multiply(wQh, self.x_hrz[:, k] - self.p_xref_hrz[:, k]))
-            cost_hrz += cp.sum_squares(cp.multiply(wRh, self.u_hrz[:, k]))
-            cons_hrz += [self.x_hrz[:, k + 1] == self.A_hrz @ self.x_hrz[:, k] + self.B_hrz @ self.u_hrz[:, k]]
+            # costo su u - u_ss: all'equilibrio serve l'assetto che compensa d
+            cost_hrz += cp.sum_squares(cp.multiply(wRh, self.u_hrz[:, k] - self.p_uss))
+            cons_hrz += [self.x_hrz[:, k + 1] == self.A_hrz @ self.x_hrz[:, k]
+                         + self.B_hrz @ self.u_hrz[:, k] + E_hrz @ self.p_dxy]
             cons_hrz += [cp.abs(self.u_hrz[:, k]) <= self.p_axy_lim]
             #cons_hrz += [cp.abs(self.x_hrz[2, k]) <= self.v_max_hrz]   # |vx| <= v_max
             #cons_hrz += [cp.abs(self.x_hrz[3, k]) <= self.v_max_hrz]   # |vy| <= v_max
@@ -169,6 +209,7 @@ class HybridController:
         self.p_z_plat = cp.Parameter()
         self.p_r_cone = cp.Parameter(self.N + 1)
         self.p_ge = cp.Parameter(self.N)          # accelerazione da effetto suolo
+        self.p_d = cp.Parameter()                 # disturbo stimato (offset-free)
         # slack del cono: una variabile >=0 per ogni passo, penalizzata nel costo.
         # Rende il QP SEMPRE feasible: quando il cono e' impossibile da rispettare
         # (es. h->0 al vertice), il vincolo viene violato del minimo eps_k invece
@@ -190,9 +231,15 @@ class HybridController:
 
         for k in range(self.N):
             cost_vrt += cp.sum_squares(cp.multiply(wQv, self.x_vrt[:, k] - self.p_xref_vrt))
-            cost_vrt += cp.sum_squares(cp.multiply(wRv, self.u_vrt[:, k]))
+            # costo sull'accelerazione NETTA (u + effetto suolo + disturbo), non
+            # su u: all'equilibrio sul target serve u = -(a_ge + d) != 0, e un
+            # costo su u da solo farebbe preferire all'MPC un errore di quota
+            # residuo pur di non spendere ingresso (plateau). Pesare la netta
+            # equivale a pesare u - u_ss, come nella formulazione offset-free.
+            cost_vrt += cp.sum_squares(cp.multiply(
+                wRv, self.u_vrt[:, k] + self.p_ge[k] + self.p_d))
             cons_vrt += [self.x_vrt[:, k + 1] == self.A_vrt @ self.x_vrt[:, k]
-                         + self.B_vrt @ (self.u_vrt[:, k] + self.p_ge[k])]
+                         + self.B_vrt @ (self.u_vrt[:, k] + self.p_ge[k] + self.p_d)]
             cons_vrt += [cp.abs(self.u_vrt[:, k]) <= 9.0]
 
             # --- livello 2 (DHOCBF grado 2), rilassato con slack ---
@@ -212,6 +259,8 @@ class HybridController:
         self.p_cur_hrz.value = np.zeros(4)
         self.p_xref_hrz.value = np.zeros((4, self.N + 1))
         self.p_axy_lim.value = 0.17
+        self.p_dxy.value = np.zeros(2)
+        self.p_uss.value = np.zeros(2)
         self.prob_hrz.solve(solver=cp.OSQP)
         
         self.p_cur_vrt.value = np.zeros(2)
@@ -219,6 +268,7 @@ class HybridController:
         self.p_z_plat.value = 0.0
         self.p_r_cone.value = np.full(self.N + 1, -100.0)
         self.p_ge.value = np.zeros(self.N)
+        self.p_d.value = 0.0
         self.prob_vrt.solve(solver=cp.OSQP)
         print("Warm-up completato.")
 
@@ -227,10 +277,12 @@ class HybridController:
     # ==================================================================== #
     def compute(self, cur_pos, cur_vel, target_pos, target_yaw=0.0,
                 target_vel=None, a_xy_lim=0.17, final_pos=None, landing=False,
-                ramp_ref_vel=None, z_ground=None):
+                ramp_ref_vel=None, z_ground=None, cmd_saturated_prev=False):
         self.control_counter += 1
         if z_ground is not None:
             self.z_ground = float(z_ground)
+        now = time.perf_counter()
+        self._observer_update(float(cur_pos[2]), cur_vel, now, cmd_saturated_prev)
         cur_pos = np.asarray(cur_pos, float)
         cur_vel = np.asarray(cur_vel, float)
         target_pos = np.asarray(target_pos, float)
@@ -283,7 +335,63 @@ class HybridController:
             self.last_pid_force, self.last_pid_euler = force, np.asarray(euler, float).copy()
             mode = 0
 
+        # accelerazione comandata in questo tick (stessa convenzione di B_hrz:
+        # pitch positivo -> +x, roll positivo -> -y)
+        phi, theta = float(euler[0]), float(euler[1])
+        fm = force / self.M
+        a_cmd = np.array([fm * math.cos(phi) * math.sin(theta),
+                          -fm * math.sin(phi),
+                          fm * math.cos(phi) * math.cos(theta) - self.g])
+        ge_now = float(self._ge_accel(float(cur_pos[2]) - self.z_ground)) if self.ge_enabled else 0.0
+        self._obs_prev = (a_cmd, ge_now, now)
+        self.log_d_hat = self.d_hat
+        self.log_d_xy = self.d_xy.copy()
         return force, float(euler[0]), float(euler[1]), float(euler[2]), mode
+
+    def _observer_reset(self):
+        self._obs_v0 = None
+        self._obs_int = np.zeros(3)
+        self._obs_T = 0.0
+
+    def _observer_update(self, z, vel, now, saturated):
+        """Stima a finestra dei disturbi [dx, dy, dz] (vedi __init__)."""
+        vel = np.asarray(vel, float)
+        if not self.dist_enabled:
+            self.d_hat = 0.0
+        if not self.dist_xy_enabled:
+            self.d_xy[:] = 0.0
+        prev = self._obs_prev
+        if prev is None or saturated:
+            self._observer_reset()
+            return
+        a_prev, ge_prev, t_prev = prev
+        dtr = now - t_prev
+        if dtr <= 0.0 or dtr > 0.2:          # buco nel loop: finestra da rifare
+            self._observer_reset()
+            return
+        if self._obs_v0 is None:             # inizio finestra
+            self._obs_v0 = vel.copy()
+            self._obs_int = np.zeros(3)
+            self._obs_T = 0.0
+            return
+        self._obs_int += (a_prev + np.array([0.0, 0.0, ge_prev])) * dtr
+        self._obs_T += dtr
+        if self._obs_T < self.dist_win:
+            return
+        d_inst = (vel - self._obs_v0 - self._obs_int) / self._obs_T
+        # vicino al suolo il contatto (reazione, attrito) non e' un disturbo
+        if z - self.z_ground >= self.dist_freeze_h:
+            if self.dist_enabled:
+                alpha = min(1.0, self._obs_T / self.dist_tau)
+                self.d_hat += alpha * (d_inst[2] - self.d_hat)
+                self.d_hat = float(np.clip(self.d_hat, -self.dist_max, self.dist_max))
+            if self.dist_xy_enabled:
+                alpha = min(1.0, self._obs_T / self.dist_xy_tau)
+                self.d_xy += alpha * (d_inst[0:2] - self.d_xy)
+                self.d_xy = np.clip(self.d_xy, -self.dist_xy_max, self.dist_xy_max)
+        self._obs_v0 = vel.copy()
+        self._obs_int = np.zeros(3)
+        self._obs_T = 0.0
 
     def _mpc_force_attitude(self, cur_pos, cur_vel, wp, target_yaw, a_xy_lim, target_vel):
         cx, cy, cz = cur_pos
@@ -354,6 +462,11 @@ class HybridController:
     def _mpc_horizontal(self, cur_x, cur_y, cur_vx, cur_vy, wp, a_xy_lim, target_vel):
         self.p_cur_hrz.value = np.array([cur_x, cur_y, cur_vx, cur_vy])
         self.p_axy_lim.value = a_xy_lim
+        dxy = self.d_xy if self.dist_xy_enabled else np.zeros(2)
+        self.p_dxy.value = dxy
+        # vx' = vx + dt (g*u1 + dx) ; vy' = vy + dt (-g*u0 + dy)
+        self.p_uss.value = np.clip(np.array([dxy[1] / self.g, -dxy[0] / self.g]),
+                                   -a_xy_lim, a_xy_lim)
 
         xref_mat = np.zeros((4, self.N + 1))
         for k in range(self.N + 1):
@@ -396,6 +509,7 @@ class HybridController:
 
         ge = self._ge_profile(cur_z, cur_vz)
         self.p_ge.value = ge
+        self.p_d.value = float(self.d_hat) if self.dist_enabled else 0.0
         self.log_ge0 = float(ge[0])
 
         self.p_cur_vrt.value = np.array([cur_z, cur_vz])
