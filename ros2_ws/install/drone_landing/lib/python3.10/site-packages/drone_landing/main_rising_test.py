@@ -38,6 +38,15 @@ MOCAP_TOPIC = "/cf_drone/pose"
 #   quota superficie   = z_piattaforma + PLATFORM_TOP_DZ
 #   Z_LAND             = superficie + quota del drone appoggiato + LAND_CLEARANCE
 #   suolo per l'MPC    = superficie + quota del drone appoggiato
+#   suolo effetto suolo= superficie - GE_ROTOR_DZ        <-- NON lo stesso!
+# Le ultime due sono quantita' diverse e vanno tenute separate. "suolo per
+# l'MPC" e' la quota a cui l'origine del corpo si trova a contatto avvenuto:
+# giusta per la macchina a stati e per congelare l'osservatore. Il modello di
+# effetto suolo invece vuole la distanza PIANO ROTORI - SUPERFICIE, che a
+# contatto NON e' zero ma vale la quota del drone appoggiato (~3.5 cm).
+# Usando la prima al posto della seconda il modello sottostimava h di quella
+# costante e saturava a k_max in ogni atterraggio (vedi commento in
+# controller_deploy.py).
 # "quota del drone appoggiato" e' la z mocap del drone fermo sul pavimento
 # prima del decollo (pavimento a z = FLOOR_Z): e' l'offset tra l'origine del
 # corpo rigido del drone e la superficie su cui poggia, e vale anche sulla
@@ -55,8 +64,53 @@ PLATFORM_TOP_DZ  = -0.012  # [m] superficie di appoggio MENO origine del corpo
 # drone al centro (con lo stesso yaw che ha in volo, cioe' 0): drone - piattaforma
 # = (+1.62, -1.14) cm nel mondo con yaw piattaforma -90.3 deg.
 PLATFORM_XY_OFFSET = np.array([0.0114, 0.0162])   # [m] nel frame piattaforma
-LAND_CLEARANCE   = 0.015   # [m] target sopra la quota di appoggio
+LAND_CLEARANCE   = 0.0     # [m] target sopra la quota di appoggio. Era 0.015,
+                           # eredita' del vecchio Z_LAND = 0.05 sul pavimento.
+                           # Con quel valore piu' la soglia di fine landing
+                           # (+1 cm) il drone veniva lasciato 2.3-2.5 cm sopra
+                           # il contatto e i motori tagliati di colpo: gli
+                           # ultimi centimetri erano CADUTA LIBERA. Volo 131434:
+                           # vz controllata -0.094 m/s, ma impatto reale
+                           # sqrt(0.094^2 + 2g*0.023) = 0.68 m/s, sette volte
+                           # tanto. Ora il controllo arriva fino al contatto e
+                           # a fermare il drone ci pensa il contatto stesso.
 FLOOR_Z          = 0.0     # [m] quota del pavimento nel frame mocap
+# Offset tra il PIANO DEI ROTORI e l'origine del corpo rigido del drone nel
+# frame mocap, positivo se i rotori stanno SOPRA l'origine. Serve solo al
+# modello di effetto suolo:
+#     h_effetto_suolo = z_mocap + GE_ROTOR_DZ - quota_superficie
+# 0.0 significa "uso l'origine del corpo come piano rotori", che e' la scelta
+# neutra e comunque corretta a meno di qualche mm: basta misurarlo una volta
+# (drone appoggiato, quota mocap meno quota del piano eliche) se si vuole
+# essere precisi. NON confonderlo con la quota del drone appoggiato: quella
+# e' la distanza origine-superficie, questa e' rotori-origine.
+GE_ROTOR_DZ      = 0.0     # [m]
+# Copia del clamp del controller, usata solo per disegnare la riga di
+# saturazione nei plot: se ge_az ci si appoggia, il modello sta saturando e il
+# valore non e' fisico.
+CTRL_GE_K_MAX    = 1.25
+CTRL_GE_R_EFF    = 0.075   # copia di ge_r_eff, per confrontare modello e dati
+# ---- inseguimento della piattaforma in volo -----------------------------------
+# Fino al 1/10 il target veniva letto UNA SOLA VOLTA prima del decollo e poi
+# congelato: spostare la piattaforma durante il volo non cambiava nulla e il
+# drone atterrava dove la piattaforma era al warmup. Con PLATFORM_TRACK la posa
+# viene riletta a ogni tick e il waypoint di landing (piu' quota di contatto e
+# superficie per l'effetto suolo) la segue, SENZA filtri sul movimento: dove si
+# legge la piattaforma, li' sta il target. Niente rate limit ne' soglie sul
+# salto: erano comodi come protezione ma rendevano il comportamento dipendente
+# da quanto e quanto in fretta si sposta la piattaforma, quindi impossibile da
+# interpretare durante le prove a mano.
+# Restano solo due controlli sulla VALIDITA' del dato, invisibili a chi muove
+# la piattaforma: pose nulle scartate (il topic ha pubblicato zeri piu' volte)
+# e pose vecchie ignorate. La mediana su pochi campioni serve a non far
+# tremolare la quota di contatto, non a rallentare l'inseguimento.
+# Solo POSIZIONE: niente stima di velocita' della piattaforma, quindi va bene
+# per spostamenti a gradino o lenti, non per un target in moto continuo — li'
+# servirebbe il feed-forward di velocita' su target_vel.
+PLATFORM_TRACK       = True
+PLATFORM_TRACK_N     = 15    # campioni per la mediana corrente della posa
+PLATFORM_MIN_NORM    = 1e-3  # [m] posa praticamente nulla = non valida
+PLATFORM_TRACK_MAXAGE = 0.3  # [s] pose piu' vecchie: il target si congela
 PLATFORM_WAIT_T  = 5.0     # [s] attesa massima della prima posa piattaforma
 PLATFORM_AVG_N   = 50      # campioni mediati per fissare il target (~0.5 s a 100 Hz)
 
@@ -68,6 +122,73 @@ PLATFORM_AVG_N   = 50      # campioni mediati per fissare il target (~0.5 s a 10
 # sotto Z_LAND: la soglia viene attraversata con pochi cm/s, e il contatto
 # fisico ferma comunque il drone.
 LAND_UNDERSHOOT  = 0.02    # [m]
+
+# ---- rilevamento del contatto -------------------------------------------------
+# La fine del landing non e' piu' una soglia di quota ma il contatto vero,
+# riconosciuto dalla dinamica. Firme in OR, tutte valide solo sotto
+# CONTACT_H_MAX dal contatto previsto (sopra sarebbero falsi positivi).
+#
+# NOTA sulla prima versione (voli 143225 e 143358): il drone toccava e il
+# rilevatore scattava 0.3-0.5 s dopo, perche' le tre firme di allora erano
+# tutte deboli per un atterraggio MORBIDO:
+#   - il picco di acc.z non esiste. L'accelerometro misura la FORZA SPECIFICA:
+#     con il drone appoggiato e fermo spinta + reazione del terreno fanno
+#     esattamente il peso, quindi acc.z legge 1.0 g qualunque cosa facciano i
+#     motori (misurato: 0.88-1.10, mai vicino a 1.45). Un picco c'e' solo nel
+#     transitorio d'urto, che a 5 cm/s e' trascurabile. Firma abbandonata.
+#   - l'inversione di vz non scattava: il rimbalzo a 5 cm/s dava +0.027 contro
+#     una soglia di +0.04.
+#   - l'azzeramento di vz scattava tardi: il rumore della vz onboard (+-0.03)
+#     faceva ripartire il timer dei 0.15 s continuativi.
+#
+# Firme attuali, dalla piu' pulita:
+#   1) STALLO DELLA QUOTA: la posizione dal mocap e' molto meno rumorosa della
+#      vz stimata a bordo. In discesa il drone fa ~12 mm in 0.2 s; appoggiato
+#      ne fa meno di 2, con rumore del mocap sotto il mm. Fattore sei di
+#      separazione su una grandezza pulita.
+#   2) CROLLO DELL'HOVER APPARENTE: a terra e' il terreno a reggere il peso,
+#      quindi cmd/acc.z scende molto sotto il comando di hover (misurato
+#      28000-34000 contro 40500). Richiede anche h piccola, perche' pure
+#      l'effetto suolo abbassa quel rapporto, ma solo del ~12% a 5 cm.
+#   3) inversione di vz, soglia abbassata.
+#   4) azzeramento di vz, soglia piu' larga, come rete.
+# Due reti ulteriori: quota sotto il contatto e tempo massimo in prossimita'.
+CONTACT_H_MAX    = 0.06    # [m] sopra questa quota sul contatto non si cerca
+CONTACT_DZ_WIN   = 0.20    # [s] finestra per lo stallo della quota
+CONTACT_DZ_MAX   = 0.004   # [m] spostamento massimo nella finestra = appoggiato
+CONTACT_DZ_H     = 0.015   # [m] quota massima per la firma dello stallo. OBBLIGATORIA:
+                           # 4 mm in 0.20 s e' una soglia di VELOCITA' implicita di
+                           # 20 mm/s, e la discesa terminale ormai sta sui 30-60 mm/s.
+                           # Nel volo 162908 (R_hrz = 10) il drone scendeva a 29 mm/s
+                           # e ha coperto 4.8 mm in 0.24 s: la firma e' scattata a
+                           # 39.7 mm dalla piattaforma, tagliando i motori prima del
+                           # contatto. Lo stallo distingue 'fermo perche' appoggiato'
+                           # da 'in discesa lenta' solo se si e' gia' quasi a terra.
+CONTACT_HOVER_F  = 0.80    # cmd/acc.z sotto questa frazione di HOVER_CMD ...
+CONTACT_HOVER_H  = 0.025   # [m] ... e sotto questa quota = il terreno regge
+CONTACT_HOVER_N  = 3       # campioni consecutivi
+CONTACT_ACC_JUMP = 0.50    # [g] SALTO di acc.z sopra la mediana recente. Non
+                           # una soglia assoluta (vedi sopra: appoggiato si
+                           # legge 1.0 g), ma il transitorio d'urto, che per un
+                           # contatto piu' deciso c'e' eccome: volo 142650,
+                           # tocco a 0.097 m/s, acc.z salta a 2.15 g con
+                           # mediana 0.99. Prende gli atterraggi duri, dove lo
+                           # stallo della quota arriverebbe dopo il rimbalzo.
+CONTACT_ACC_WIN  = 0.40    # [s] finestra per la mediana di riferimento
+CONTACT_VZ_UP    = 0.02    # [m/s] vz risalita sopra questo = inversione
+CONTACT_VZ_ZERO  = 0.020   # [m/s] |vz| sotto questo ...
+CONTACT_T_ZERO   = 0.20    # [s]   ... per questa durata, e sotto CONTACT_VZ_H,
+                           # = appoggiato. NON si puo' allargare: la discesa
+                           # terminale e' a 0.043-0.048 m/s, quindi una soglia
+                           # a 0.045 scattava a 3 cm dal contatto (141749).
+CONTACT_VZ_H     = 0.020   # [m] quota massima per questa rete
+CONTACT_H_HARD   = -0.012  # [m] rete: quota sotto il contatto di 12 mm
+CONTACT_T_MAX    = 4.0     # [s] rete: tempo massimo sotto CONTACT_H_MAX
+# Dopo il contatto NON si taglia di colpo: si scende a una frazione dell'hover
+# per TOUCHDOWN_T, cosi' il drone resta piantato invece di rimbalzare, poi zero.
+TOUCHDOWN_CMD_F  = 0.55    # frazione di HOVER_CMD subito dopo il contatto
+TOUCHDOWN_T      = 0.30    # [s] durata della rampa di spegnimento
+
 DT = 0.02
 G = 9.81
 
@@ -323,7 +444,8 @@ def save_and_plot(rows):
             "target_x", "target_y", "target_z", "target_vx", "target_vy", "target_vz", "vbat",
             "cmd_ctrl", "spool_ceil", "accz", "hover_raw", "hover_cmd",
             "hover_est", "hover_b50", "hover_kf", "kf_sigma", "kf_used", "b50_n", "hover_vbat",
-            "az_mpc", "eps0", "eps_max", "ge_az", "d_hat", "d_x", "d_y", "z_ground"]
+            "az_mpc", "eps0", "eps_max", "ge_az", "ge_h", "d_hat", "d_x", "d_y",
+            "z_ground", "ge_ground", "hv0", "eps_imp"]
     with open(csv_path, "w", newline="") as f:
         w = csv.writer(f); w.writerow(cols)
         for r in rows:
@@ -391,7 +513,11 @@ def save_and_plot(rows):
     ax[3].plot(t, az_meas, color="0.6", lw=0.6, label="misurata (acc.z)")
     ax[3].plot(t, a["az"], color="tab:purple", lw=1.3, label="comandata")
     ax[3].plot(t, a["az_mpc"], color="tab:red", lw=1.3, ls="--", label="uscita MPC verticale")
+    ge_sat = G * (CTRL_GE_K_MAX - 1.0)
     ax[3].plot(t, a["ge_az"], color="tab:brown", lw=1.2, ls=":", label="effetto suolo (modello)")
+    if np.isfinite(a["ge_az"]).any() and np.nanmax(a["ge_az"]) > 0.9 * ge_sat:
+        ax[3].axhline(ge_sat, color="tab:brown", lw=0.7, ls="--",
+                      label=f"clamp k_max ({ge_sat:.2f})")
     ax[3].plot(t, a["d_hat"], color="tab:olive", lw=1.4, ls="-.", label="disturbo stimato d")
     ax[3].axhline(0, color="k", lw=0.6)
     fl = ~np.isin(state_str, ["prespin", "spool"])   # in prespin az e' fittizia (-g)
@@ -453,16 +579,22 @@ def save_and_plot(rows):
     # --- slack del cono (solo in MPC) ---
     ax[10].plot(t, a["eps0"], color="tab:red", lw=1.3, label="eps primo passo")
     ax[10].plot(t, a["eps_max"], color="tab:brown", lw=1.0, ls="--", label="eps max orizzonte")
+    ax[10].plot(t, a["eps_imp"], color="tab:blue", lw=1.2, ls="-.",
+                label="slack barriera impatto")
+    ax[10].plot(t, a["hv0"], color="tab:green", lw=1.3,
+                label="h_v (margine di impatto) [m/s]")
     ax[10].axhline(0, color="k", lw=0.6)
-    ax[10].set_ylabel("slack cono [m]"); ax[10].legend(loc="upper right", fontsize=7)
+    ax[10].set_ylabel("slack cono [m] / h_v"); ax[10].legend(loc="upper right", fontsize=7)
     shade_mpc(ax[10])
 
     # --- quota sopra il suolo, per leggere l'effetto suolo sui pannelli sopra ---
     h_gnd = a["z"] - a["z_ground"]
-    ax[11].plot(t, h_gnd, color="tab:green", lw=1.3)
+    ax[11].plot(t, h_gnd, color="tab:green", lw=1.3, label="z - quota di contatto")
+    ax[11].plot(t, a["ge_h"], color="tab:brown", lw=1.2, ls="--",
+                label="h usata dall'effetto suolo")
     ax[11].axhline(HOVER_EST_Z_MIN - np.nanmean(a["z_ground"]), color="k", lw=0.7, ls=":",
                    label="stimatori congelati sotto")
-    ax[11].set_ylabel("z - suolo [m]"); ax[11].set_xlabel("t [s]")
+    ax[11].set_ylabel("quote [m]"); ax[11].set_xlabel("t [s]")
     ax[11].legend(loc="upper right", fontsize=7); shade_mpc(ax[11])
 
     eps_on = a["eps_max"][np.isfinite(a["eps_max"])]
@@ -534,7 +666,10 @@ def plot_ground_effect(a, state_str, stamp, plt):
         print("effetto suolo: dati insufficienti (serve hold e landing)")
         return
     ref = float(np.median(raw_all[ok_ref]))
-    h = (a["z"] - a["z_ground"])[land]
+    # h = distanza piano rotori - superficie, la stessa che usa il modello.
+    # Prima qui si usava z_ground (quota di contatto): h sottostimata di ~3.5 cm,
+    # ed e' il motivo per cui il fit precedente ha dato r_eff = 41 mm.
+    h = (a["z"] - a["ge_ground"])[land]
     k = ref / raw_all[land]
     vz = a["vz"][land]
 
@@ -552,10 +687,25 @@ def plot_ground_effect(a, state_str, stamp, plt):
     hh = np.linspace(max(PROP_R / 4 * 1.2, 0.01), max(edges), 200)
     ax.plot(hh, 1.0 / (1.0 - (PROP_R / (4 * hh)) ** 2), "r--",
             label=f"Cheeseman-Bennett (R={PROP_R*1000:.1f} mm)")
+    ax.plot(hh, np.minimum(1.0 / np.maximum(1.0 - (CTRL_GE_R_EFF / (4 * hh)) ** 2, 1e-3),
+                           CTRL_GE_K_MAX), "b-", lw=1.2, alpha=0.8,
+            label=f"modello a bordo (R={CTRL_GE_R_EFF*1000:.0f} mm, clamp {CTRL_GE_K_MAX})")
+    # --- rifit di r_eff sulla h corretta -------------------------------------
+    # 1 - 1/k = (r/4h)^2  ->  r = 4h sqrt(1 - 1/k), stima robusta sui campioni
+    # con effetto misurabile (k > 1.005) e dentro la validita' del modello.
+    r_fit = float("nan")
+    fm = (k > 1.005) & (h > 0.02) & np.isfinite(h) & np.isfinite(k)
+    if fm.sum() >= 10:
+        r_fit = float(np.median(4.0 * h[fm] * np.sqrt(1.0 - 1.0 / k[fm])))
+        ax.plot(hh, np.minimum(1.0 / np.maximum(1.0 - (r_fit / (4 * hh)) ** 2, 1e-3), 2.0),
+                "g-", lw=1.8, label=f"rifit su questo volo: R={r_fit*1000:.0f} mm")
+        print(f"effetto suolo: r_eff rifittata = {r_fit*1000:.1f} mm "
+              f"su {fm.sum()} campioni (a bordo {CTRL_GE_R_EFF*1000:.0f} mm)")
     ax.axhline(1.0, color="k", lw=0.6)
-    ax.axvline(HOVER_EST_Z_MIN - float(np.nanmean(a["z_ground"])), color="0.5", ls=":",
+    ax.axhline(CTRL_GE_K_MAX, color="b", lw=0.6, ls=":")
+    ax.axvline(HOVER_EST_Z_MIN - float(np.nanmean(a["ge_ground"])), color="0.5", ls=":",
                label="soglia congelamento stimatori")
-    ax.set_xlabel("quota sopra il suolo [m]")
+    ax.set_xlabel("distanza piano rotori - superficie [m]")
     ax.set_ylabel("T_IGE / T_OGE  (= hover_hold / (cmd/acc.z))")
     ax.set_title(f"Effetto suolo nel landing (rif. hold = {ref:.0f})")
     ax.set_ylim(0.8, 1.3); ax.grid(alpha=.3); ax.legend(fontsize=8)
@@ -803,7 +953,11 @@ class LandingNode(Node):
         # --- piattaforma (target di atterraggio) ---
         self._plat_buf = []                 # ultime pose piattaforma
         self.plat_xyz = None                # posa fissata come target
+        self._plat_t = None                 # istante dell'ultima posa piattaforma
+        self._plat_warn_t = 0.0             # anti-spam dei warning sulle pose
+        self._rest = None                   # quota del drone appoggiato [m]
         self._land_ground = None            # "suolo" di atterraggio per l'MPC
+        self._ge_ground = None              # superficie per il modello di effetto suolo
         if USE_PLATFORM:
             self._plat_sub = self.create_subscription(
                 PoseStamped, PLATFORM_TOPIC, self._on_platform, 10)
@@ -863,10 +1017,20 @@ class LandingNode(Node):
         self.seg_t0 = time.perf_counter()
         self.dynamic_p_start = None
         self.land_t0 = None
+        # --- rilevamento del contatto ---
+        self._near_t0 = None        # istante di ingresso sotto CONTACT_H_MAX
+        self._z_hist = []           # (t, z) recenti, per lo stallo della quota
+        self._acc_hist = []         # (t, acc.z) recenti, per il salto d'urto
+        self._hov_hits = 0          # campioni consecutivi con hover apparente crollato
+        self._vz_zero_t0 = None     # inizio della finestra a vz ~ 0
+        self._vz_was_down = False   # il drone stava scendendo
+        self._touch_t0 = None       # istante del contatto
+        self._touch_cause = ""      # quale firma ha scattato (per il log)
         self.seg_p_start = None
         self.last_p_LOS = None   # ultima posizione reale della carota (per continuita' tra segmenti)
         self._finished = False
         self._last_cmd_sat = False   # comando saturo nel tick precedente (osservatore d)
+        self.last_cmd_sent = int(HOVER_CMD_INIT)  # ultimo comando inviato
         self._emergency = False   # True dopo il primo Ctrl+C: congela la piattaforma mobile
 
         # --- timer di controllo a 1/DT Hz: E' il loop ---
@@ -880,6 +1044,88 @@ class LandingNode(Node):
     def _on_vbat(self, timestamp, data, logconf):
         """Callback del blocco batteria separato."""
         self.latest_vbat = data["pm.vbat"]
+
+    def _contact_detected(self, pos, vel, now):
+        """True quando il drone ha toccato. Vedi il blocco CONTACT_* in testa.
+
+        Le firme valgono solo in prossimita' del contatto: piu' in alto un picco
+        di acc.z e' una raffica o una vibrazione, e vz ~ 0 e' un plateau, non un
+        appoggio. Ritorna (contatto, causa).
+        """
+        zc = self._land_ground if self._land_ground is not None else self._z_ground
+        if zc is None:
+            return False, ""
+        h = float(pos[2]) - float(zc)
+        vz = float(vel[2])
+
+        if h > CONTACT_H_MAX:
+            self._near_t0 = None
+            self._z_hist = []
+            self._acc_hist = []
+            self._hov_hits = 0
+            self._vz_zero_t0 = None
+            self._vz_was_down = False
+            return False, ""
+
+        if self._near_t0 is None:
+            self._near_t0 = now
+        if vz < -0.03:
+            self._vz_was_down = True
+
+        # 1) stallo della quota (firma primaria, usa il mocap: poco rumoroso)
+        self._z_hist.append((now, float(pos[2])))
+        while self._z_hist and now - self._z_hist[0][0] > CONTACT_DZ_WIN:
+            self._z_hist.pop(0)
+        if (h < CONTACT_DZ_H and self._z_hist
+                and now - self._z_hist[0][0] >= 0.9 * CONTACT_DZ_WIN):
+            zs = [p[1] for p in self._z_hist]
+            dz = max(zs) - min(zs)
+            if dz < CONTACT_DZ_MAX:
+                return True, (f"quota ferma ({dz*1000:.1f} mm in "
+                              f"{CONTACT_DZ_WIN:.2f} s) a h={h*1000:.0f} mm")
+
+        # 2) crollo dell'hover apparente: a terra e' il terreno a reggere
+        accz = self.latest_accz
+        if (accz is not None and h < CONTACT_HOVER_H
+                and HOVER_EST_ACC_MIN < float(accz) < HOVER_EST_ACC_MAX
+                and float(self.last_cmd_sent) / float(accz) < CONTACT_HOVER_F * HOVER_CMD):
+            self._hov_hits += 1
+        else:
+            self._hov_hits = 0
+        if self._hov_hits >= CONTACT_HOVER_N:
+            return True, (f"hover apparente {float(self.last_cmd_sent)/float(accz):.0f} "
+                          f"contro {HOVER_CMD:.0f} a h={h*1000:.0f} mm")
+
+        # 3) transitorio d'urto: salto di acc.z rispetto alla mediana recente
+        if accz is not None:
+            self._acc_hist.append((now, float(accz)))
+            while self._acc_hist and now - self._acc_hist[0][0] > CONTACT_ACC_WIN:
+                self._acc_hist.pop(0)
+            if len(self._acc_hist) >= 8:
+                med = float(np.median([a for _, a in self._acc_hist[:-2]]))
+                if float(accz) > med + CONTACT_ACC_JUMP:
+                    return True, (f"urto: acc.z {float(accz):.2f} g contro "
+                                  f"{med:.2f} di mediana, a h={h*1000:.0f} mm")
+
+        # 4) inversione della velocita' verticale
+        if self._vz_was_down and vz > CONTACT_VZ_UP:
+            return True, f"inversione vz={vz:+.3f} m/s a h={h*1000:.0f} mm"
+
+        # 5) azzeramento prolungato della velocita' (rete)
+        if abs(vz) < CONTACT_VZ_ZERO and h < CONTACT_VZ_H:
+            if self._vz_zero_t0 is None:
+                self._vz_zero_t0 = now
+            elif now - self._vz_zero_t0 >= CONTACT_T_ZERO:
+                return True, f"vz ~ 0 per {CONTACT_T_ZERO:.2f} s a h={h*1000:.0f} mm"
+        else:
+            self._vz_zero_t0 = None
+
+        # reti di sicurezza
+        if h <= CONTACT_H_HARD:
+            return True, f"quota sotto il contatto ({h*1000:.0f} mm)"
+        if now - self._near_t0 > CONTACT_T_MAX:
+            return True, f"timeout {CONTACT_T_MAX:.1f} s sotto {CONTACT_H_MAX*100:.0f} cm"
+        return False, ""
 
     def _on_accz(self, timestamp, data, logconf):
         """Callback del blocco acc.z (forza specifica lungo l'asse di spinta)."""
@@ -903,8 +1149,58 @@ class LandingNode(Node):
         q = msg.pose.orientation
         yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
         self._plat_buf.append((p.x, p.y, p.z, yaw))
+        self._plat_t = time.perf_counter()
         if len(self._plat_buf) > PLATFORM_AVG_N:
             self._plat_buf.pop(0)
+
+    def _track_platform(self, now):
+        """Aggiorna il waypoint di landing sulla posa corrente della piattaforma.
+
+        Sposta in blocco WP[LANDING], WP[HOLD], l'inizio del segmento di landing
+        e TARGET_XY dello stesso delta, cosi' la geometria del segmento (e
+        quindi la carota LOS) resta coerente. Aggiorna anche la quota di
+        contatto e la superficie dell'effetto suolo, che dipendono dalla z
+        della piattaforma. Vedi il blocco PLATFORM_TRACK_* in testa.
+        """
+        global TARGET_XY, Z_LAND
+        if not (PLATFORM_TRACK and USE_PLATFORM) or self._emergency:
+            return
+        if self.plat_xyz is None or self.WP is None or self._rest is None:
+            return
+        if self.state not in ("rising", "nav_to_wp", "hold", "landing"):
+            return
+        if self._plat_t is None or now - self._plat_t > PLATFORM_TRACK_MAXAGE:
+            return
+        B = np.array(self._plat_buf[-PLATFORM_TRACK_N:], dtype=float)
+        if len(B) < 3:
+            return
+        p = np.median(B[:, 0:3], axis=0)
+        if np.linalg.norm(p) < PLATFORM_MIN_NORM:
+            return                                   # posa nulla: topic sporco
+
+        yaw = float(np.arctan2(np.median(np.sin(B[:, 3])), np.median(np.cos(B[:, 3]))))
+        c, s_ = math.cos(yaw), math.sin(yaw)
+        off_w = np.array([c * PLATFORM_XY_OFFSET[0] - s_ * PLATFORM_XY_OFFSET[1],
+                          s_ * PLATFORM_XY_OFFSET[0] + c * PLATFORM_XY_OFFSET[1]])
+        surface = p[2] + PLATFORM_TOP_DZ
+        wp_new = np.array([p[0] + off_w[0], p[1] + off_w[1],
+                           surface + self._rest + LAND_CLEARANCE - LAND_UNDERSHOOT])
+
+        # il target E' dove si legge la piattaforma: nessun limite sul delta
+        delta = wp_new - self.WP[LANDING]
+        if float(np.linalg.norm(delta)) < 1e-5:
+            return
+        self.WP[LANDING] += delta
+        self.WP[HOLD][0:2] += delta[0:2]             # l'hold resta a Z_HOLD
+        if self.dynamic_p_start is not None:
+            self.dynamic_p_start[0:2] += delta[0:2]
+        TARGET_XY = TARGET_XY + delta[0:2]
+        self.plat_xyz = p.copy()
+
+        # quote derivate, nello stesso ordine di _set_target_from_platform
+        Z_LAND = float(self.WP[LANDING][2] + LAND_UNDERSHOOT)
+        self._land_ground = Z_LAND - LAND_CLEARANCE
+        self._ge_ground = self._land_ground - self._rest - GE_ROTOR_DZ
 
     def _set_target_from_platform(self):
         """Fissa TARGET_XY e Z_LAND dalla posa della piattaforma (prima del decollo)."""
@@ -918,17 +1214,20 @@ class LandingNode(Node):
                           s_ * PLATFORM_XY_OFFSET[0] + c * PLATFORM_XY_OFFSET[1]])
         spread = np.ptp(P, axis=0) if len(P) > 1 else np.zeros(3)
         rest = float(self.latest_pose[2]) - FLOOR_Z      # drone appoggiato sul pavimento
+        self._rest = rest
         surface = float(self.plat_xyz[2]) + PLATFORM_TOP_DZ
         TARGET_XY = np.array([self.plat_xyz[0], self.plat_xyz[1]], dtype=float) + off_w
         Z_LAND = surface + rest + LAND_CLEARANCE
-        self._land_ground = surface + rest
+        self._land_ground = surface + rest        # quota di contatto (FSM, osservatore)
+        self._ge_ground = surface - GE_ROTOR_DZ   # superficie vera (effetto suolo)
         self.get_logger().info(
             f"[PLATFORM] {len(P)} pose, piattaforma ({self.plat_xyz[0]:.3f}, "
             f"{self.plat_xyz[1]:.3f}, {self.plat_xyz[2]:.3f}) (escursione "
             f"{1000*spread.max():.1f} mm), yaw {math.degrees(yaw):.1f} deg, offset mondo "
             f"({100*off_w[0]:+.1f}, {100*off_w[1]:+.1f}) cm -> TARGET_XY=({TARGET_XY[0]:.3f}, "
             f"{TARGET_XY[1]:.3f}), Z_LAND={Z_LAND:.3f}, suolo MPC={self._land_ground:.3f} "
-            f"(drone appoggiato a {rest:.3f} m)")
+            f"(drone appoggiato a {rest:.3f} m), superficie={surface:.3f}, "
+            f"suolo effetto suolo={self._ge_ground:.3f}")
         if spread.max() > 0.01:
             self.get_logger().warn("[PLATFORM] la piattaforma si muove (>1 cm): target fissato comunque")
 
@@ -1112,10 +1411,19 @@ class LandingNode(Node):
             eps0=getattr(c, "log_eps0", float("nan")),
             eps_max=getattr(c, "log_eps_max", float("nan")),
             ge_az=getattr(c, "log_ge0", float("nan")),
+            ge_h=getattr(c, "log_ge_h0", float("nan")),
             d_hat=getattr(c, "log_d_hat", float("nan")),
             d_x=float(getattr(c, "log_d_xy", [float("nan")] * 2)[0]),
             d_y=float(getattr(c, "log_d_xy", [float("nan")] * 2)[1]),
-            z_ground=(self._z_ground if self._z_ground is not None else float("nan")))
+            # z_ground: quota di CONTATTO effettivamente passata al controller
+            # (prima qui finiva self._z_ground, che e' un'altra cosa: da qui
+            # l'incoerenza tra la colonna e il valore usato in volo).
+            # ge_ground: superficie usata dal modello di effetto suolo.
+            z_ground=(self._land_ground if self._land_ground is not None
+                      else (self._z_ground if self._z_ground is not None else float("nan"))),
+            ge_ground=(self._ge_ground if self._ge_ground is not None else float("nan")),
+            hv0=getattr(c, "log_hv0", float("nan")),
+            eps_imp=getattr(c, "log_eps_imp", float("nan")))
 
     def _append_row(self, pos, vel, state, mode, p_LOS, force, cmd, az, roll, pitch,
                     solve_ms, v_ff, current_target_vel, cmd_ctrl, spool_ceil, wp_landing,
@@ -1163,6 +1471,30 @@ class LandingNode(Node):
         vel = np.array([data["stateEstimate.vx"], data["stateEstimate.vy"],
                         data["stateEstimate.vz"]])
 
+        # ---------------- APPOGGIO: spegnimento in anello aperto --------------
+        # Contatto rilevato: il controllo non serve piu' (il terreno regge il
+        # drone) e tenerlo attivo farebbe inseguire un riferimento sotto la
+        # superficie con il drone fermo. Si scende a una frazione dell'hover e
+        # poi a zero su TOUCHDOWN_T: un taglio secco farebbe ricadere il drone
+        # da qualche millimetro e rimbalzare sulle gambe.
+        if self.state == "touchdown":
+            now = time.perf_counter()
+            frac = (now - self._touch_t0) / TOUCHDOWN_T
+            if frac >= 1.0:
+                self.state = "idle"
+                self._shutdown_flight()
+                return
+            cmd_td = int(np.clip(HOVER_CMD * TOUCHDOWN_CMD_F * (1.0 - frac), 0, 60000))
+            self.cf.commander.send_setpoint(0.0, 0.0, 0.0, cmd_td)
+            self.ctrl.integral_pos_e[:] = 0.0
+            self._append_row(pos, vel, state="touchdown", mode=0,
+                             p_LOS=pos, force=0.0, cmd=cmd_td, az=float("nan"),
+                             roll=0.0, pitch=0.0, solve_ms=0.0,
+                             v_ff=np.zeros(3), current_target_vel=np.zeros(3),
+                             cmd_ctrl=float("nan"), spool_ceil=float("nan"),
+                             wp_landing=self.WP[LANDING] if self.WP is not None else pos)
+            return
+
         # ---------------- DECOLLO IN ANELLO APERTO: PRE-SPIN + SPOOL ----------
         # Si esce PRIMA dell'inizializzazione di self.WP, quindi i waypoint
         # vengono ancorati alla posizione reale del drone all'istante del
@@ -1174,9 +1506,15 @@ class LandingNode(Node):
                 if self._prespin_t0 is None:
                     self._prespin_t0 = now
                     self._z_ground = float(pos[2])
+                    if self._ge_ground is None:
+                        # senza piattaforma si atterra sul pavimento: la
+                        # superficie e' FLOOR_Z, non self._z_ground (che e' la
+                        # quota dell'origine del corpo col drone appoggiato)
+                        self._ge_ground = FLOOR_Z - GE_ROTOR_DZ
                     self.get_logger().info(
                         f"[SPOOL] pre-spin a {PRESPIN_CMD} per {PRESPIN_T:.2f}s "
-                        f"(suolo z={self._z_ground:.3f} m)")
+                        f"(contatto z={self._z_ground:.3f} m, superficie "
+                        f"{self._ge_ground:.3f} m)")
                 cmd_ol = float(PRESPIN_CMD)
                 if now - self._prespin_t0 >= PRESPIN_T:
                     self.state = "spool"
@@ -1231,7 +1569,7 @@ class LandingNode(Node):
             self.WP = np.array([
                 [hx, hy, pos[2]],                    # start
                 [hx, hy, Z_CRUISE],                  # rising: sale a 1.0m dove sei
-                [0.0, -1.5, Z_CRUISE],               # nav: va a (0, -2)
+                [-0.5, 0.0, Z_CRUISE],               # nav: va a (0, -2)
                 [TARGET_XY[0], TARGET_XY[1], Z_HOLD],# hold: sopra il target (poi ricalcolato sul cono)
                 [TARGET_XY[0], TARGET_XY[1], Z_LAND - LAND_UNDERSHOOT],# landing (rif. MPC)
             ])
@@ -1266,6 +1604,9 @@ class LandingNode(Node):
                                      else self.WP[self.old_wp_id].copy())
             self.prev_wp = self.wp_counter
         elapsed = time.perf_counter() - self.seg_t0
+
+        # il target segue la piattaforma (solo posizione, vedi _track_platform)
+        self._track_platform(time.perf_counter())
 
         moving = self.state in ["hold", "landing"] and not self._emergency
 
@@ -1323,6 +1664,8 @@ class LandingNode(Node):
             pos, vel, p_LOS, target_yaw=0.0, target_vel=current_target_vel, ramp_ref_vel=v_ff,
             a_xy_lim=A_XY, final_pos=self.WP[LANDING], landing=landing,
             z_ground=(self._land_ground if self._land_ground is not None else self._z_ground),
+            z_ground_ge=(self._ge_ground if self._ge_ground is not None
+                         else (FLOOR_Z - GE_ROTOR_DZ)),
             cmd_saturated_prev=self._last_cmd_sat)
         solve_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -1331,6 +1674,7 @@ class LandingNode(Node):
         cmd_ctrl = force_to_cmd(force)
         cmd = cmd_ctrl
         self._last_cmd_sat = cmd >= 59999 or cmd <= 10001
+        self.last_cmd_sent = int(cmd)   # usato dal rilevatore di contatto
         spool_ceil_log = float("nan")
 
         self.cf.commander.send_setpoint(rad2deg(roll), rad2deg(pitch), 0.0, cmd)
@@ -1376,14 +1720,35 @@ class LandingNode(Node):
         # scatta mai (vedi analisi: d_acc=0.5*V*RAMP_T era < stop_delta).
         carrot_arrived = (s_lin >= L - 1e-3) if L > 1e-6 else True
 
-        # --- terminazione del landing: condizione dedicata, puramente verticale ---
-        # Il landing e' concluso appena il drone raggiunge (o scende sotto) la
-        # quota di terra Z_LAND. NON usa il gate xy+carrot delle transizioni di
-        # navigazione: in coda il drone e' gia' a terra (z<=Z_LAND) ma dxy puo'
-        # rioscillare sopra stop_delta, lasciando il drone "appeso" nello stato
-        # landing per secondi (l'MPC continua a tenere z al riferimento). Questo
-        # produceva l'hovering finale e i campioni fuori-cono al vertice.
-        if self.state == "landing" and pos[2] <= self.WP[LANDING][2] + LAND_UNDERSHOOT + 1e-2:
+        # --- terminazione del landing: CONTATTO, non piu' una soglia di quota ---
+        # Prima si usciva a Z_LAND + 1 cm e si tagliavano i motori: con
+        # LAND_CLEARANCE = 0.015 il drone veniva lasciato ~2.3 cm sopra
+        # l'appoggio e quegli ultimi centimetri erano caduta libera (volo
+        # 131434: vz controllata 0.094 m/s, impatto reale 0.68 m/s). Ora il
+        # controllo arriva fino al contatto e la transizione la decide la
+        # dinamica (picco di acc.z, inversione o azzeramento di vz).
+        if self.state == "landing":
+            touched, cause = self._contact_detected(pos, vel, time.perf_counter())
+            if touched:
+                self.state = "touchdown"
+                self._touch_t0 = time.perf_counter()
+                self._touch_cause = cause
+                self.get_logger().info(
+                    f"[CONTATTO] {cause} | vz={vel[2]:+.3f} m/s -> spegnimento in "
+                    f"{TOUCHDOWN_T:.2f} s")
+                return
+
+        # Ultima rete, puramente verticale: se il mocap dice che siamo ben sotto
+        # il riferimento di landing e il rilevatore di contatto non ha ancora
+        # scattato, qualcosa non torna e si chiude comunque. La soglia sta sotto
+        # il riferimento (gia' LAND_UNDERSHOOT sotto il contatto), quindi in un
+        # volo normale questa riga non viene mai raggiunta: a decidere e' il
+        # contatto. Non usa il gate xy+carrot delle transizioni di navigazione
+        # perche' in coda dxy puo' rioscillare sopra stop_delta e lascerebbe il
+        # drone appeso nello stato landing per secondi.
+        if self.state == "landing" and pos[2] <= self.WP[LANDING][2] - 0.02:
+            self.get_logger().warn(
+                f"[LANDING] chiusura di sicurezza a z={pos[2]:.3f} senza contatto rilevato")
             self.state = "idle"; self.old_wp_id, self.wp_counter = LANDING, IDLE
             return
 

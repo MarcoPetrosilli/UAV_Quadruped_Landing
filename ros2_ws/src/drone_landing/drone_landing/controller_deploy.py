@@ -61,7 +61,7 @@ class HybridController:
         #self.R_vrt = np.diag([15.0])
 
         self.Q_hrz = np.diag([2.0, 2.0, 1.5, 1.5])
-        self.R_hrz = np.diag([5.0, 5.0])
+        self.R_hrz = np.diag([15.0, 15.0])
         self.Q_vrt = np.diag([2.0, 1.5])
         self.R_vrt = np.diag([5.0])
         
@@ -89,11 +89,40 @@ class HybridController:
         #     z_{k+1} = A z_k + B (u_k + a_ge(h_k)),   a_ge = g*(k_IGE - 1)
         # valutata sulla traiettoria z predetta al solve precedente, quindi
         # il problema resta un QP (termine affine, parametro).
+        # ATTENZIONE alla quota da usare. Cheeseman-Bennett vuole la distanza
+        # PIANO ROTORI - SUPERFICIE. Fino al 21/9 il modello usava self.z_ground,
+        # che il main riempie con "superficie + quota del drone appoggiato": e'
+        # la quota che l'origine del corpo AVRA' a contatto avvenuto, quindi h=0
+        # al contatto mentre i rotori sono ancora ~3.5 cm sopra la superficie.
+        # Risultato: h sottostimata di una costante pari a quell'offset, e
+        # siccome il clamp k_max scatta sotto 3.4 cm, il modello saturava a
+        # 0.98 m/s^2 in OGNI atterraggio (voli 175138/175926/181036/181649),
+        # con l'MPC che toglieva ~1 m/s^2 proprio nel flare. Da qui in poi il
+        # modello usa un suolo suo, self.z_ground_ge, che il main riempie con
+        # la superficie vera; self.z_ground resta la quota di contatto e serve
+        # solo al congelamento dell'osservatore (dist_freeze_h).
         self.ge_enabled = True
-        self.ge_r_eff = 0.041        # raggio efficace [m]: fit su 7 voli (17-21/9), RMS 0.7%
-        self.ge_k_max = 1.10         # protezione numerica (attiva solo sotto ~3.4 cm)
-        self.z_ground = 0.0          # quota del suolo [m] (da mocap, la passa il main)
+        self.ge_r_eff = 0.075        # raggio efficace [m]. Rifit 1/10 sulla h
+                                     # corretta, voli 125809 e 131434: RMS 1.6%
+                                     # sui 5-36 cm (contro 2.0% con 65 mm e 1.8%
+                                     # con 85). Il vecchio 41 mm veniva da un fit
+                                     # con h sottostimata di 3.5 cm e spiegava
+                                     # solo il 2.5% a 7 cm contro il 6% reale.
+        self.ge_k_max = 1.25         # rete di sicurezza sul guadagno. Con 41 mm
+                                     # bastava 1.10; con 75 mm quel valore
+                                     # scatterebbe gia' a 6.2 cm, cioe' dentro la
+                                     # zona utile. A 1.25 scatta sotto 4.2 cm.
+        self.ge_h_min = 0.020        # [m] quota minima a cui valutare il modello:
+                                     # Cheeseman ha un polo in R/4 = 10 mm ed e'
+                                     # validato solo per h/R >~ 0.5. Sotto questa
+                                     # soglia il valore viene congelato invece di
+                                     # divergere (e la traiettoria predetta, che
+                                     # con LAND_UNDERSHOOT punta sotto la
+                                     # superficie, non genera piu' h negative).
+        self.z_ground = 0.0          # quota di CONTATTO [m] (origine corpo appoggiata)
+        self.z_ground_ge = 0.0       # quota della SUPERFICIE [m], per l'effetto suolo
         self.log_ge0 = float("nan")  # a_ge del primo passo [m/s^2], solo log
+        self.log_ge_h0 = float("nan")# h usata al primo passo [m], solo log
 
         # ---- MPC offset-free: disturbo costante stimato sull'asse z ----------
         # Il modello verticale diventa
@@ -112,7 +141,10 @@ class HybridController:
         self.dist_tau = 0.6          # costante del filtro [s]
         self.dist_win = 0.10         # finestra di stima [s]
         self.dist_max = 1.5          # |d| massimo [m/s^2] (~15% di g)
-        self.dist_freeze_h = 0.02    # sotto questa quota sul suolo la stima si ferma [m]
+        self.dist_freeze_h = 0.03    # sotto questa quota sul contatto la stima si
+                                     # ferma [m]. Alzata da 0.02 ora che il landing
+                                     # prosegue FINO al contatto: il transitorio di
+                                     # appoggio non deve entrare nel disturbo.
         self.d_hat = 0.0
         # Stessa struttura sul piano orizzontale: disturbi dx, dy [m/s^2] che
         # raccolgono i bias costanti (baricentro non centrato, trim d'assetto,
@@ -120,7 +152,7 @@ class HybridController:
         # contatto (voli 175138, 175926). Costante piu' lunga dell'asse z per
         # non inseguire la resistenza aerodinamica, che dipende dalla velocita'.
         self.dist_xy_enabled = True
-        self.dist_xy_tau = 1.0       # [s]
+        self.dist_xy_tau = 2.5       # [s]
         self.dist_xy_max = 0.5       # |d_xy| massimo [m/s^2] (~3 deg di assetto)
         self.d_xy = np.zeros(2)
         self._obs_prev = None        # (a_cmd [ax, ay, az], a_ge, t) del tick precedente
@@ -130,8 +162,37 @@ class HybridController:
         self.log_d_hat = float("nan")
         self.log_d_xy = np.full(2, float("nan"))
 
+        # ---- barriera di impatto (impact-aware) ------------------------------
+        # Il cono dice DOVE si puo' stare, non QUANTO VELOCE ci si arriva: da
+        # solo lascia toccare a 0.10-0.12 m/s. Si aggiunge una CBF sulla
+        # velocita' relativa di avvicinamento:
+        #
+        #   h_v(k) = v_td + (vz_k - vz_piatt) + k_v (z_k - z_contatto) >= 0
+        #
+        # Alla quota di contatto il vincolo diventa vz_rel >= -v_td, cioe' E'
+        # la specifica di touchdown; piu' in alto concede velocita' in modo
+        # lineare con la quota residua. h_v dipende dalla velocita', quindi la
+        # sua derivata contiene gia' l'ingresso: GRADO RELATIVO 1, basta un
+        # livello (il cono ne richiede due perche' e' una barriera di posizione):
+        #
+        #   h_v(k+1) >= (1 - gamma_v) h_v(k) - eps_k
+        #
+        # affine nello stato e nell'ingresso -> il problema resta un QP.
+        # Lontano dal suolo h_v e' largamente positiva e il vincolo e' inattivo
+        # da solo: con k_v = 1.3 inizia a mordere negli ultimi ~30 cm.
+        # Lo slack e' penalizzato molto piu' di quello del cono: la velocita' di
+        # impatto e' la specifica fisica, il corridoio e' una preferenza.
+        self.imp_enabled = True
+        self.imp_vtd = 0.05          # velocita' di contatto ammessa [m/s]
+        self.imp_kv = 1.3            # pendenza della barriera [1/s]: con vz di
+                                     # crociera 0.5 m/s morde sotto ~32 cm
+        self.imp_gamma = 0.2         # classe-K discreta (come il cono)
+        self.rho_imp = 1e6           # peso dello slack (>> rho_slack del cono)
+        self.log_hv0 = float("nan")  # valore della barriera al passo 0 [m/s]
+        self.log_eps_imp = float("nan")
+
         self.z_cut = 1.0
-        self.r_base = 0.3
+        self.r_base = 0.03
         self.rho_slack = 1e4        # peso penalita' slack del cono (grande = slack usato solo se necessario)
 
         # ---- multi-rate decimation -----------------------------------------
@@ -210,6 +271,12 @@ class HybridController:
         self.p_r_cone = cp.Parameter(self.N + 1)
         self.p_ge = cp.Parameter(self.N)          # accelerazione da effetto suolo
         self.p_d = cp.Parameter()                 # disturbo stimato (offset-free)
+        self.p_z_contact = cp.Parameter()         # quota di contatto (barriera impatto)
+        self.p_vz_tgt = cp.Parameter()            # vz della piattaforma
+        # disattivazione della barriera senza ricompilare: si rilassa il secondo
+        # membro di una costante grande (stesso trucco di p_r_cone = -1000)
+        self.p_imp_off = cp.Parameter(nonneg=True)
+        self.eps_imp = cp.Variable(self.N, nonneg=True)
         # slack del cono: una variabile >=0 per ogni passo, penalizzata nel costo.
         # Rende il QP SEMPRE feasible: quando il cono e' impossibile da rispettare
         # (es. h->0 al vertice), il vincolo viene violato del minimo eps_k invece
@@ -228,6 +295,11 @@ class HybridController:
 
         # --- livello 1:  h1_k = h0_{k+1} - (1-gamma1) h0_k ,  k = 0 .. N-1 ---
         h1 = [h0[k + 1] - (1.0 - self.gamma1_cbf) * h0[k] for k in range(self.N)]
+
+        # --- barriera di impatto, grado relativo 1 (vedi __init__) ---
+        hv = [self.imp_vtd + (self.x_vrt[1, k] - self.p_vz_tgt)
+              + self.imp_kv * (self.x_vrt[0, k] - self.p_z_contact)
+              for k in range(self.N + 1)]
 
         for k in range(self.N):
             cost_vrt += cp.sum_squares(cp.multiply(wQv, self.x_vrt[:, k] - self.p_xref_vrt))
@@ -249,8 +321,13 @@ class HybridController:
                 h2_k = h1[k + 1] - (1.0 - self.gamma2_cbf) * h1[k]
                 cons_vrt += [h2_k >= -self.eps_cone[k]]
 
+            # --- barriera di impatto: h_v(k+1) >= (1-gamma_v) h_v(k) ---
+            cons_vrt += [hv[k + 1] >= (1.0 - self.imp_gamma) * hv[k]
+                         - self.eps_imp[k] - self.p_imp_off]
+
         # penalita' quadratica sullo slack (feasibility, es. al vertice del cono)
         cost_vrt += self.rho_slack * cp.sum_squares(self.eps_cone)
+        cost_vrt += self.rho_imp * cp.sum_squares(self.eps_imp)
         cost_vrt += cp.sum_squares(cp.multiply(wQvT, self.x_vrt[:, self.N] - self.p_xref_vrt))
         self.prob_vrt = cp.Problem(cp.Minimize(cost_vrt), cons_vrt)
 
@@ -269,6 +346,9 @@ class HybridController:
         self.p_r_cone.value = np.full(self.N + 1, -100.0)
         self.p_ge.value = np.zeros(self.N)
         self.p_d.value = 0.0
+        self.p_z_contact.value = -100.0
+        self.p_vz_tgt.value = 0.0
+        self.p_imp_off.value = 0.0
         self.prob_vrt.solve(solver=cp.OSQP)
         print("Warm-up completato.")
 
@@ -277,10 +357,17 @@ class HybridController:
     # ==================================================================== #
     def compute(self, cur_pos, cur_vel, target_pos, target_yaw=0.0,
                 target_vel=None, a_xy_lim=0.17, final_pos=None, landing=False,
-                ramp_ref_vel=None, z_ground=None, cmd_saturated_prev=False):
+                ramp_ref_vel=None, z_ground=None, z_ground_ge=None,
+                cmd_saturated_prev=False):
         self.control_counter += 1
         if z_ground is not None:
             self.z_ground = float(z_ground)
+        # se il main non passa la superficie si ricade sulla quota di contatto
+        # (comportamento vecchio, h sottostimata): serve solo per compatibilita'
+        if z_ground_ge is not None:
+            self.z_ground_ge = float(z_ground_ge)
+        elif z_ground is not None:
+            self.z_ground_ge = float(z_ground)
         now = time.perf_counter()
         self._observer_update(float(cur_pos[2]), cur_vel, now, cmd_saturated_prev)
         cur_pos = np.asarray(cur_pos, float)
@@ -329,6 +416,9 @@ class HybridController:
             self.log_eps0 = float("nan")
             self.log_eps_max = float("nan")
             self.log_ge0 = float("nan")
+            self.log_ge_h0 = float("nan")
+            self.log_hv0 = float("nan")
+            self.log_eps_imp = float("nan")
             self.mpc_step = 0
             force, euler = self._pid_reach(
                 cur_pos, cur_vel, target_pos, target_yaw, target_vel + ramp_ref_vel)
@@ -342,7 +432,7 @@ class HybridController:
         a_cmd = np.array([fm * math.cos(phi) * math.sin(theta),
                           -fm * math.sin(phi),
                           fm * math.cos(phi) * math.cos(theta) - self.g])
-        ge_now = float(self._ge_accel(float(cur_pos[2]) - self.z_ground)) if self.ge_enabled else 0.0
+        ge_now = float(self._ge_accel(float(cur_pos[2]) - self.z_ground_ge)) if self.ge_enabled else 0.0
         self._obs_prev = (a_cmd, ge_now, now)
         self.log_d_hat = self.d_hat
         self.log_d_xy = self.d_xy.copy()
@@ -484,25 +574,37 @@ class HybridController:
         return float(self.u_hrz[0, 0].value), float(self.u_hrz[1, 0].value), self.x_hrz.value
 
     def _ge_accel(self, h):
-        """a_ge(h) [m/s^2]: accelerazione in piu' a parita' di comando, in effetto suolo."""
-        h = np.maximum(np.asarray(h, float), 1e-3)
+        """a_ge(h) [m/s^2]: accelerazione in piu' a parita' di comando, in effetto suolo.
+
+        h = distanza piano rotori - superficie. Congelata a ge_h_min: sotto il
+        modello non e' validato e il polo in R/4 lo fa divergere.
+        """
+        h = np.maximum(np.asarray(h, float), self.ge_h_min)
         with np.errstate(divide="ignore", invalid="ignore"):
             k = 1.0 / np.maximum(1.0 - (self.ge_r_eff / (4.0 * h)) ** 2, 1e-3)
         k = np.clip(k, 1.0, self.ge_k_max)
         return self.g * (k - 1.0)
 
     def _ge_profile(self, cur_z, cur_vz):
-        """a_ge sui passi 0..N-1, valutata sulla z predetta al solve precedente."""
+        """a_ge sui passi 0..N-1.
+
+        Il passo 0 usa la z MISURATA (che e' nota esattamente): prima usava la
+        z predetta un passo avanti, il che introduceva un bias di |vz|*mpc_dt
+        sul valore loggato e rendeva ge[0] non interpretabile a posteriori.
+        I passi 1..N-1 usano la traiettoria predetta al solve precedente.
+        Al primo solve dopo il latch non c'e' traiettoria valida: si restituisce
+        zero invece di extrapolare a velocita' costante, che portava la z sotto
+        la superficie e produceva un campione spurio a k_max (visto a z=1.55 m).
+        """
         if not self.ge_enabled:
             return np.zeros(self.N)
         zp = self.x_vrt[0, :].value
         if zp is None or not np.all(np.isfinite(zp)):
-            # primo solve: propagazione a velocita' costante
-            zp = cur_z + cur_vz * self.mpc_dt * np.arange(self.N + 1)
-        else:
-            # la soluzione precedente e' shiftata di un passo
-            zp = np.concatenate([zp[1:], zp[-1:]])
-        return self._ge_accel(zp[:self.N] - self.z_ground)
+            return np.zeros(self.N)          # primo solve: nessuna predizione
+        zp = np.concatenate([zp[1:], zp[-1:]])   # soluzione precedente, shiftata
+        zp = zp[:self.N].copy()
+        zp[0] = cur_z                            # passo 0: quota misurata
+        return self._ge_accel(zp - self.z_ground_ge)
 
     def _mpc_vertical(self, cur_z, cur_vz, wp, target_vel, x_pred=None, y_pred=None, apply_cone=False):
         use_cone = (apply_cone and self.cbf_cone_enabled and x_pred is not None and y_pred is not None)
@@ -511,10 +613,20 @@ class HybridController:
         self.p_ge.value = ge
         self.p_d.value = float(self.d_hat) if self.dist_enabled else 0.0
         self.log_ge0 = float(ge[0])
+        self.log_ge_h0 = float(max(cur_z - self.z_ground_ge, self.ge_h_min))
 
         self.p_cur_vrt.value = np.array([cur_z, cur_vz])
         self.p_xref_vrt.value = np.array([wp[2], 0.0])
         self.p_z_plat.value = wp[2]
+
+        # barriera di impatto: quota di contatto = self.z_ground (quota che
+        # l'origine del corpo ha a contatto avvenuto), non la superficie.
+        vz_tgt = float(target_vel[2]) if target_vel is not None else 0.0
+        self.p_z_contact.value = float(self.z_ground)
+        self.p_vz_tgt.value = vz_tgt
+        self.p_imp_off.value = 0.0 if self.imp_enabled else 1e3
+        self.log_hv0 = float(self.imp_vtd + (cur_vz - vz_tgt)
+                             + self.imp_kv * (cur_z - self.z_ground))
 
         if use_cone:
             ex = np.asarray(x_pred) - (wp[0] + target_vel[0] * np.arange(self.N + 1) * self.mpc_dt)
@@ -533,6 +645,7 @@ class HybridController:
             self.log_az_mpc = float("nan")
             self.log_eps0 = float("nan")
             self.log_eps_max = float("nan")
+            self.log_eps_imp = float("nan")
             return 0.0
         az = float(self.u_vrt[0, 0].value)
         self.log_az_mpc = az
@@ -545,4 +658,7 @@ class HybridController:
             # cono disattivato (solve orizzontale fallito): slack senza significato
             self.log_eps0 = float("nan")
             self.log_eps_max = float("nan")
+        ei = self.eps_imp.value
+        self.log_eps_imp = (float(np.maximum(np.asarray(ei, float), 0.0).max())
+                            if (self.imp_enabled and ei is not None) else float("nan"))
         return az
