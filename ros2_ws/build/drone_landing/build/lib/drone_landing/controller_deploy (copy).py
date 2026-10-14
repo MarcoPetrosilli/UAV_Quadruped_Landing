@@ -12,7 +12,14 @@ Differenze rispetto al controllore di sim, tutte necessarie per il deploy:
     SyncLogger): l'orientamento non serve piu', vedi nota su _pid_reach;
   - l'uscita e' forza [N] + assetto [rad], non RPM.
 
-La piattaforma mobile e' ignorata: target statico, target_vel = 0.
+INDICE DELLE COSE AGGIUNTE PER LO YAW (per non cercarle):
+  - yaw_* in __init__      yaw_enabled, yaw_kp, yaw_rate_max, yaw_deadband,
+                           yaw_symmetry, yaw_rate_sign. Nessuna protezione
+                           automatica: il controllo non si spegne da solo.
+  - _yaw_error()           errore in angolo-asse da R_drone^T R_target.
+  - _yaw_rate_cmd()        proporzionale + banda morta + saturazione.
+  - _world_to_body()       ruota il comando orizzontale dal mondo al corpo.
+  - log_yaw_err/rate       solo diagnostica.
 """
 
 import numpy as np
@@ -34,16 +41,70 @@ class HybridController:
         self.N = 40
 
         # ---- MPC prediction models (identici al sim) -----------------------
-        self.A_hrz = np.array([[1, 0, self.mpc_dt, 0],
-                               [0, 1, 0, self.mpc_dt],
-                               [0, 0, 1, 0],
-                               [0, 0, 0, 1]])
-        self.B_hrz = np.array([[0, 0],
-                               [0, 0],
-                               [0, g * self.mpc_dt],
-                               [-g * self.mpc_dt, 0]])
-        self.A_vrt = np.array([[1, self.mpc_dt], [0, 1]])
-        self.B_vrt = np.array([[0], [self.mpc_dt]])
+        # ORIZZONTALE: ritardo di accelerazione nel modello. Fra il comando di
+        # assetto e l'accelerazione vera passano 140-160 ms, misurati per
+        # cross-correlazione fra g*tan(pitch) e la derivata di vx sui voli
+        # 143216, 143403 e 173605 (correlazione 0.95-0.97). Con il doppio
+        # integratore l'MPC crede che l'accelerazione sia istantanea: pianifica
+        # una frenata che arriva in ritardo e va lungo. Si aggiunge un terzo
+        # livello di stato, l'accelerazione, con dinamica del primo ordine
+        #
+        #     a_{k+1} = (1 - lam) a_k + lam * g * u_k ,   lam = mpc_dt / att_tau
+        #
+        # Lo stato diventa [x, y, vx, vy, ax, ay]. Il costo resta sulle prime
+        # QUATTRO componenti, quindi Q_hrz e R_hrz non cambiano significato e la
+        # taratura attuale vale ancora. Con att_lag_enabled = False si torna
+        # esattamente al modello di prima.
+        self.att_lag_enabled = True
+        self.att_tau = 0.15          # [s] costante del ritardo di accelerazione
+        self._a_hrz = np.zeros(2)    # stato di accelerazione [ax, ay] del modello
+        self._build_hrz_model()
+        # VERTICALE: stessa struttura, ma costante di tempo SUA, non att_tau.
+        # Fino al 9/10 il modello verticale era un doppio integratore puro, cioe'
+        # l'MPC credeva che la spinta comandata arrivasse istantanea. Il terzo
+        # stato va messo, ma con il ritardo giusto.
+        #
+        # ATTENZIONE, errore corretto il 9/10 sera. Il primo tentativo usava
+        # att_tau = 0.15 anche qui, "per simmetria con l'orizzontale". Sbagliato:
+        # i due assi non condividono la catena di attuazione. L'orizzontale
+        # comanda un ANGOLO e deve aspettare che il drone ruoti (0.14-0.16 s,
+        # misurati per cross-correlazione). Il verticale comanda la SPINTA
+        # direttamente ai motori: nessuna rotazione di mezzo, solo il polo dei
+        # motori. Identificazione di cmd/hover -> acc.z, modello del primo ordine
+        # con ritardo puro, minimi quadrati su (D, lambda), 14 voli del 9/10 in
+        # due finestre indipendenti:
+        #   hold + discesa sopra 40 cm (n~300, escursione +-2%):
+        #       ritardo puro 0.02-0.04 s, polo 0.013-0.025 s  ->  TOTALE 0.04-0.06
+        #   salita (n~420, escursione 19-27% di hover):
+        #       ritardo puro 0.00-0.02 s, polo 0.051-0.067 s  ->  TOTALE 0.05-0.07
+        # Con il log a 50 Hz non si risolve meglio di ~0.04 s, ma 0.15 e' fuori
+        # di un fattore tre. Il valore usato e' 0.06, estremo alto delle due
+        # stime, per non sottostimare il ritardo.
+        #
+        # Cosa faceva il valore sbagliato: lam = 0.04/0.15 = 0.27 invece di 0.67,
+        # cioe' il modello credeva che ogni comando rendesse il 27% della sua
+        # accelerazione al primo passo invece del 67%. A parita' di R_vrt
+        # un'azione che "rende meno" costa di piu' per unita' di accelerazione, e
+        # l'ottimo si sposta su profili meno aggressivi: era una DETUNING
+        # mascherata del verticale. Lo stallo spariva perche' lo stallo era
+        # sovra-frenata, non perche' la fase fosse corretta. Con vrt_tau giusto
+        # una parte di stallo puo' tornare: si toglie con R_vrt / Q_vrt, che sono
+        # i parametri per farlo, non con una costante di tempo falsa.
+        #
+        #     a_{k+1} = (1 - lam) a_k + lam * u_k ,   lam = mpc_dt / vrt_tau
+        #
+        # Lo stato diventa [z, vz, az]. Differenza rispetto all'orizzontale: qui u
+        # E' gia' un'accelerazione (m/s^2), non un angolo, quindi in B non c'e' g.
+        # Effetto suolo e disturbo NON passano dal ritardo: sono accelerazioni
+        # reali gia' in atto, quindi entrano direttamente nella riga della
+        # velocita' tramite E_vrt (stessa scelta fatta per d_xy sull'orizzontale).
+        # Il costo resta sulle prime DUE componenti, quindi Q_vrt non cambia
+        # significato. Con vrt_lag_enabled = False si torna al modello di prima.
+        self.vrt_lag_enabled = True
+        self.vrt_tau = 0.06          # [s] ritardo comando di spinta -> acc.z.
+                                     # NON e' att_tau: vedi il blocco sopra.
+        self._a_vrt = 0.0            # stato di accelerazione az del modello
+        self._build_vrt_model()
 
         # ---- DSL PID gains (reach) -----------------------------------------
         self.P_COEFF_FOR = np.array([.4, .4, 1.25])
@@ -60,10 +121,10 @@ class HybridController:
         #self.Q_vrt = np.diag([20.0, 15.0])
         #self.R_vrt = np.diag([15.0])
 
-        self.Q_hrz = np.diag([2.0, 2.0, 1.5, 1.5])
-        self.R_hrz = np.diag([5.0, 5.0])
+        self.Q_hrz = np.diag([3.0, 3.0, 4.0, 4.0])
+        self.R_hrz = np.diag([7.0, 7.0])
         self.Q_vrt = np.diag([2.0, 1.5])
-        self.R_vrt = np.diag([5.0])
+        self.R_vrt = np.diag([3.0])
         
         # ---- Cone CBF (glideslope) -----------------------------------------
         self.cbf_cone_enabled = True
@@ -102,13 +163,17 @@ class HybridController:
         # la superficie vera; self.z_ground resta la quota di contatto e serve
         # solo al congelamento dell'osservatore (dist_freeze_h).
         self.ge_enabled = True
-        self.ge_r_eff = 0.075        # raggio efficace [m]: fit su 7 voli (17-21/9),
-                                     # RMS 0.7%, MA fit fatto con la h sbagliata
-                                     # (sottostimata di ~3.5 cm): da rifittare sui
-                                     # prossimi voli usando la colonna ge_h.
-        self.ge_k_max = 1.25         # rete di sicurezza sul guadagno (con r_eff
-                                     # = 41 mm scatta sotto 3.4 cm)
-        self.ge_h_min = 0.030        # [m] quota minima a cui valutare il modello:
+        self.ge_r_eff = 0.065        # raggio efficace [m]. Rifit 1/10 sulla h
+                                     # corretta, voli 125809 e 131434: RMS 1.6%
+                                     # sui 5-36 cm (contro 2.0% con 65 mm e 1.8%
+                                     # con 85). Il vecchio 41 mm veniva da un fit
+                                     # con h sottostimata di 3.5 cm e spiegava
+                                     # solo il 2.5% a 7 cm contro il 6% reale.
+        self.ge_k_max = 1.25         # rete di sicurezza sul guadagno. Con 41 mm
+                                     # bastava 1.10; con 75 mm quel valore
+                                     # scatterebbe gia' a 6.2 cm, cioe' dentro la
+                                     # zona utile. A 1.25 scatta sotto 4.2 cm.
+        self.ge_h_min = 0.020        # [m] quota minima a cui valutare il modello:
                                      # Cheeseman ha un polo in R/4 = 10 mm ed e'
                                      # validato solo per h/R >~ 0.5. Sotto questa
                                      # soglia il valore viene congelato invece di
@@ -134,10 +199,13 @@ class HybridController:
         # Stima congelata vicino al suolo (la reazione del terreno non e' un
         # disturbo da compensare) e con comando saturo; |d| limitato.
         self.dist_enabled = True
-        self.dist_tau = 0.6          # costante del filtro [s]
+        self.dist_tau = 0.2          # costante del filtro [s]
         self.dist_win = 0.10         # finestra di stima [s]
         self.dist_max = 1.5          # |d| massimo [m/s^2] (~15% di g)
-        self.dist_freeze_h = 0.02    # sotto questa quota sul suolo la stima si ferma [m]
+        self.dist_freeze_h = 0.02    # sotto questa quota sul contatto la stima si
+                                     # ferma [m]. Alzata da 0.02 ora che il landing
+                                     # prosegue FINO al contatto: il transitorio di
+                                     # appoggio non deve entrare nel disturbo.
         self.d_hat = 0.0
         # Stessa struttura sul piano orizzontale: disturbi dx, dy [m/s^2] che
         # raccolgono i bias costanti (baricentro non centrato, trim d'assetto,
@@ -145,7 +213,7 @@ class HybridController:
         # contatto (voli 175138, 175926). Costante piu' lunga dell'asse z per
         # non inseguire la resistenza aerodinamica, che dipende dalla velocita'.
         self.dist_xy_enabled = True
-        self.dist_xy_tau = 1.0       # [s]
+        self.dist_xy_tau = 2.5       # [s]
         self.dist_xy_max = 0.5       # |d_xy| massimo [m/s^2] (~3 deg di assetto)
         self.d_xy = np.zeros(2)
         self._obs_prev = None        # (a_cmd [ax, ay, az], a_ge, t) del tick precedente
@@ -155,9 +223,74 @@ class HybridController:
         self.log_d_hat = float("nan")
         self.log_d_xy = np.full(2, float("nan"))
 
+        # ---- barriera di impatto (impact-aware) ------------------------------
+        # Il cono dice DOVE si puo' stare, non QUANTO VELOCE ci si arriva: da
+        # solo lascia toccare a 0.10-0.12 m/s. Si aggiunge una CBF sulla
+        # velocita' relativa di avvicinamento:
+        #
+        #   h_v(k) = v_td + (vz_k - vz_piatt) + k_v (z_k - z_contatto) >= 0
+        #
+        # Alla quota di contatto il vincolo diventa vz_rel >= -v_td, cioe' E'
+        # la specifica di touchdown; piu' in alto concede velocita' in modo
+        # lineare con la quota residua. h_v dipende dalla velocita', quindi la
+        # sua derivata contiene gia' l'ingresso: GRADO RELATIVO 1, basta un
+        # livello (il cono ne richiede due perche' e' una barriera di posizione):
+        #
+        #   h_v(k+1) >= (1 - gamma_v) h_v(k) - eps_k
+        #
+        # affine nello stato e nell'ingresso -> il problema resta un QP.
+        # Lontano dal suolo h_v e' largamente positiva e il vincolo e' inattivo
+        # da solo: con k_v = 1.3 inizia a mordere negli ultimi ~30 cm.
+        # Lo slack e' penalizzato molto piu' di quello del cono: la velocita' di
+        # impatto e' la specifica fisica, il corridoio e' una preferenza.
+        self.imp_enabled = True
+        self.imp_vtd = 0.7          # velocita' di contatto ammessa [m/s]
+        self.imp_kv = 0.5            # pendenza della barriera [1/s]: con vz di
+                                     # crociera 0.5 m/s morde sotto ~32 cm
+        self.imp_gamma = 0.2         # classe-K discreta (come il cono)
+        self.rho_imp = 1e6           # peso dello slack (>> rho_slack del cono)
+        self.log_hv0 = float("nan")  # valore della barriera al passo 0 [m/s]
+        self.log_eps_imp = float("nan")
+
+        # ---- controllo di imbardata ------------------------------------------
+        # Finora lo yaw non era controllato (rate 0 a send_setpoint) e il
+        # controllore assumeva implicitamente muso lungo world +x.
+        #
+        # ERRORE. Si prendono le due matrici di rotazione rispetto al mondo e si
+        # guarda la rotazione relativa
+        #     R_err = R_drone^T R_target
+        # in rappresentazione ANGOLO-ASSE: la componente z del vettore rotazione
+        # e' l'angolo da annullare. E' ben definita anche con il target
+        # inclinato, dove sottrarre due yaw estratti separatamente darebbe
+        # risultati diversi a seconda della convenzione di estrazione.
+        #
+        # USCITA: velocita' di imbardata, perche' il terzo argomento di
+        # send_setpoint e' un rate e non un angolo.
+        #
+        # FRAME. Controllare lo yaw obbliga a ruotare il comando orizzontale:
+        # gli angoli che escono sia dall'MPC (B_hrz: a_x = g u1, a_y = -g u0)
+        # sia dal DSL-PID sono riferiti al MONDO, mentre il firmware interpreta
+        # roll e pitch nel frame del DRONE. Finche' lo yaw restava a zero le due
+        # cose coincidevano. La rotazione si fa in UN SOLO POSTO, in fondo a
+        # compute(), su entrambi i rami.
+        self.yaw_enabled = True
+        self.yaw_kp = 2.0            # [1/s] costante di tempo 0.5 s
+        self.yaw_rate_max = 1.05     # [rad/s] ~60 deg/s
+        self.yaw_deadband = 0.035    # [rad] ~2 deg, anti-jitter
+        self.yaw_symmetry = 2.0 * math.pi   # 2pi = allineamento vero;
+                                     # pi/2 sfrutta la simmetria del telaio in X
+        # Il commander legacy del firmware nega il campo yawrate del pacchetto
+        # CRTP, quindi un valore positivo inviato a send_setpoint fa ruotare il
+        # drone in senso ORARIO mentre l'errore e' in convenzione mondo
+        # (antiorario positivo). Da verificare a terra.
+        self.yaw_rate_sign = -1.0
+        self.yaw_drone = 0.0         # imbardata corrente [rad], da R_drone
+        self.log_yaw_err = float("nan")
+        self.log_yaw_rate = float("nan")
+
         self.z_cut = 1.0
-        self.r_base = 0.3
-        self.rho_slack = 1e4        # peso penalita' slack del cono (grande = slack usato solo se necessario)
+        self.r_base = 0.03
+        self.rho_slack = 1e5        # peso penalita' slack del cono (grande = slack usato solo se necessario)
 
         # ---- multi-rate decimation -----------------------------------------
         self.control_counter = 0
@@ -200,22 +333,83 @@ class HybridController:
         # ==================================================================== #
         self._compile_mpc_problems()
 
+    def _build_hrz_model(self):
+        """Matrici del modello orizzontale, con o senza ritardo di accelerazione.
+
+        Senza ritardo: stato [x, y, vx, vy], l'ingresso entra nella velocita'.
+        Con ritardo:   stato [x, y, vx, vy, ax, ay], l'ingresso entra
+        nell'accelerazione, che e' a sua volta uno stato con costante att_tau.
+        In entrambi i casi il disturbo stimato d_xy entra nelle righe della
+        velocita', quindi l'ingresso di equilibrio u_ss resta lo stesso.
+        """
+        dt, g = self.mpc_dt, self.g
+        if self.att_lag_enabled:
+            lam = float(np.clip(dt / max(self.att_tau, 1e-3), 0.0, 1.0))
+            self.n_hrz = 6
+            self.A_hrz = np.array([[1, 0, dt, 0,       0,       0],
+                                   [0, 1, 0,  dt,      0,       0],
+                                   [0, 0, 1,  0,      dt,       0],
+                                   [0, 0, 0,  1,       0,      dt],
+                                   [0, 0, 0,  0, 1 - lam,       0],
+                                   [0, 0, 0,  0,       0, 1 - lam]], dtype=float)
+            self.B_hrz = np.array([[0, 0], [0, 0], [0, 0], [0, 0],
+                                   [0, lam * g], [-lam * g, 0]], dtype=float)
+            self.E_hrz = np.array([[0, 0], [0, 0], [dt, 0], [0, dt],
+                                   [0, 0], [0, 0]], dtype=float)
+        else:
+            self.n_hrz = 4
+            self.A_hrz = np.array([[1, 0, dt, 0],
+                                   [0, 1, 0, dt],
+                                   [0, 0, 1, 0],
+                                   [0, 0, 0, 1]], dtype=float)
+            self.B_hrz = np.array([[0, 0], [0, 0], [0, g * dt], [-g * dt, 0]],
+                                  dtype=float)
+            self.E_hrz = np.array([[0, 0], [0, 0], [dt, 0], [0, dt]], dtype=float)
+
+    def _build_vrt_model(self):
+        """Matrici del modello verticale, con o senza ritardo di accelerazione.
+
+        Senza ritardo: stato [z, vz], l'ingresso entra nella velocita'.
+        Con ritardo:   stato [z, vz, az], l'ingresso entra nell'accelerazione,
+        che e' a sua volta uno stato con costante vrt_tau (NON att_tau: la
+        catena di attuazione verticale non passa dall'assetto).
+        In entrambi i casi l'effetto suolo e il disturbo stimato entrano nella
+        riga della velocita' (E_vrt): sono accelerazioni reali, non comandi, e
+        non subiscono il ritardo d'attuazione.
+        """
+        dt = self.mpc_dt
+        if self.vrt_lag_enabled:
+            lam = float(np.clip(dt / max(self.vrt_tau, 1e-3), 0.0, 1.0))
+            self.n_vrt = 3
+            self.A_vrt = np.array([[1.0, dt, 0.0],
+                                   [0.0, 1.0, dt],
+                                   [0.0, 0.0, 1.0 - lam]], dtype=float)
+            self.B_vrt = np.array([[0.0], [0.0], [lam]], dtype=float)
+            self.E_vrt = np.array([0.0, dt, 0.0], dtype=float)
+        else:
+            self.n_vrt = 2
+            self.A_vrt = np.array([[1.0, dt], [0.0, 1.0]], dtype=float)
+            self.B_vrt = np.array([[0.0], [dt]], dtype=float)
+            self.E_vrt = np.array([0.0, dt], dtype=float)
+
     def _compile_mpc_problems(self):
         # --- 1. HORIZONTAL PROBLEM ---
-        self.x_hrz = cp.Variable((4, self.N + 1))
+        self.x_hrz = cp.Variable((self.n_hrz, self.N + 1))
         self.u_hrz = cp.Variable((2, self.N))
-        self.p_cur_hrz = cp.Parameter(4)
+        self.p_cur_hrz = cp.Parameter(self.n_hrz)
         self.p_xref_hrz = cp.Parameter((4, self.N + 1))
         self.p_axy_lim = cp.Parameter(nonneg=True)
         self.p_dxy = cp.Parameter(2)     # disturbo stimato [dx, dy] (offset-free)
         self.p_uss = cp.Parameter(2)     # ingresso di equilibrio [dy/g, -dx/g]
-        E_hrz = np.array([[0, 0], [0, 0], [self.mpc_dt, 0], [0, self.mpc_dt]])
+        E_hrz = self.E_hrz
 
         wQh=np.sqrt(np.diag(self.Q_hrz)); wRh=np.sqrt(np.diag(self.R_hrz)); wQhT=np.sqrt(10.0)*wQh
         cost_hrz = 0
         cons_hrz = [self.x_hrz[:, 0] == self.p_cur_hrz]
         for k in range(self.N):
-            cost_hrz += cp.sum_squares(cp.multiply(wQh, self.x_hrz[:, k] - self.p_xref_hrz[:, k]))
+            # il costo pesa solo [x, y, vx, vy]: con il modello a 6 stati
+            # l'accelerazione e' uno stato interno, non un obiettivo
+            cost_hrz += cp.sum_squares(cp.multiply(wQh, self.x_hrz[0:4, k] - self.p_xref_hrz[:, k]))
             # costo su u - u_ss: all'equilibrio serve l'assetto che compensa d
             cost_hrz += cp.sum_squares(cp.multiply(wRh, self.u_hrz[:, k] - self.p_uss))
             cons_hrz += [self.x_hrz[:, k + 1] == self.A_hrz @ self.x_hrz[:, k]
@@ -223,18 +417,24 @@ class HybridController:
             cons_hrz += [cp.abs(self.u_hrz[:, k]) <= self.p_axy_lim]
             #cons_hrz += [cp.abs(self.x_hrz[2, k]) <= self.v_max_hrz]   # |vx| <= v_max
             #cons_hrz += [cp.abs(self.x_hrz[3, k]) <= self.v_max_hrz]   # |vy| <= v_max
-        cost_hrz += cp.sum_squares(cp.multiply(wQhT, self.x_hrz[:, self.N] - self.p_xref_hrz[:, self.N]))
+        cost_hrz += cp.sum_squares(cp.multiply(wQhT, self.x_hrz[0:4, self.N] - self.p_xref_hrz[:, self.N]))
         self.prob_hrz = cp.Problem(cp.Minimize(cost_hrz), cons_hrz)
 
         # --- 2. VERTICAL PROBLEM (Unificato con Cono CBF) ---
-        self.x_vrt = cp.Variable((2, self.N + 1))
+        self.x_vrt = cp.Variable((self.n_vrt, self.N + 1))
         self.u_vrt = cp.Variable((1, self.N))
-        self.p_cur_vrt = cp.Parameter(2)
+        self.p_cur_vrt = cp.Parameter(self.n_vrt)
         self.p_xref_vrt = cp.Parameter(2)
         self.p_z_plat = cp.Parameter()
         self.p_r_cone = cp.Parameter(self.N + 1)
         self.p_ge = cp.Parameter(self.N)          # accelerazione da effetto suolo
         self.p_d = cp.Parameter()                 # disturbo stimato (offset-free)
+        self.p_z_contact = cp.Parameter()         # quota di contatto (barriera impatto)
+        self.p_vz_tgt = cp.Parameter()            # vz della piattaforma
+        # disattivazione della barriera senza ricompilare: si rilassa il secondo
+        # membro di una costante grande (stesso trucco di p_r_cone = -1000)
+        self.p_imp_off = cp.Parameter(nonneg=True)
+        self.eps_imp = cp.Variable(self.N, nonneg=True)
         # slack del cono: una variabile >=0 per ogni passo, penalizzata nel costo.
         # Rende il QP SEMPRE feasible: quando il cono e' impossibile da rispettare
         # (es. h->0 al vertice), il vincolo viene violato del minimo eps_k invece
@@ -254,8 +454,15 @@ class HybridController:
         # --- livello 1:  h1_k = h0_{k+1} - (1-gamma1) h0_k ,  k = 0 .. N-1 ---
         h1 = [h0[k + 1] - (1.0 - self.gamma1_cbf) * h0[k] for k in range(self.N)]
 
+        # --- barriera di impatto, grado relativo 1 (vedi __init__) ---
+        hv = [self.imp_vtd + (self.x_vrt[1, k] - self.p_vz_tgt)
+              + self.imp_kv * (self.x_vrt[0, k] - self.p_z_contact)
+              for k in range(self.N + 1)]
+
         for k in range(self.N):
-            cost_vrt += cp.sum_squares(cp.multiply(wQv, self.x_vrt[:, k] - self.p_xref_vrt))
+            # il costo pesa solo [z, vz]: con il modello a 3 stati l'accelerazione
+            # e' uno stato interno, non un obiettivo (come sull'orizzontale)
+            cost_vrt += cp.sum_squares(cp.multiply(wQv, self.x_vrt[0:2, k] - self.p_xref_vrt))
             # costo sull'accelerazione NETTA (u + effetto suolo + disturbo), non
             # su u: all'equilibrio sul target serve u = -(a_ge + d) != 0, e un
             # costo su u da solo farebbe preferire all'MPC un errore di quota
@@ -263,8 +470,10 @@ class HybridController:
             # equivale a pesare u - u_ss, come nella formulazione offset-free.
             cost_vrt += cp.sum_squares(cp.multiply(
                 wRv, self.u_vrt[:, k] + self.p_ge[k] + self.p_d))
+            # u passa dal ritardo (B_vrt), effetto suolo e disturbo no (E_vrt)
             cons_vrt += [self.x_vrt[:, k + 1] == self.A_vrt @ self.x_vrt[:, k]
-                         + self.B_vrt @ (self.u_vrt[:, k] + self.p_ge[k] + self.p_d)]
+                         + self.B_vrt @ self.u_vrt[:, k]
+                         + cp.multiply(self.E_vrt, self.p_ge[k] + self.p_d)]
             cons_vrt += [cp.abs(self.u_vrt[:, k]) <= 9.0]
 
             # --- livello 2 (DHOCBF grado 2), rilassato con slack ---
@@ -274,26 +483,34 @@ class HybridController:
                 h2_k = h1[k + 1] - (1.0 - self.gamma2_cbf) * h1[k]
                 cons_vrt += [h2_k >= -self.eps_cone[k]]
 
+            # --- barriera di impatto: h_v(k+1) >= (1-gamma_v) h_v(k) ---
+            cons_vrt += [hv[k + 1] >= (1.0 - self.imp_gamma) * hv[k]
+                         - self.eps_imp[k] - self.p_imp_off]
+
         # penalita' quadratica sullo slack (feasibility, es. al vertice del cono)
         cost_vrt += self.rho_slack * cp.sum_squares(self.eps_cone)
-        cost_vrt += cp.sum_squares(cp.multiply(wQvT, self.x_vrt[:, self.N] - self.p_xref_vrt))
+        cost_vrt += self.rho_imp * cp.sum_squares(self.eps_imp)
+        cost_vrt += cp.sum_squares(cp.multiply(wQvT, self.x_vrt[0:2, self.N] - self.p_xref_vrt))
         self.prob_vrt = cp.Problem(cp.Minimize(cost_vrt), cons_vrt)
 
         # --- AGGIUNGI QUESTO DUMMY SOLVE (WARM-UP) ---
         print("Warm-up MPC solver...")
-        self.p_cur_hrz.value = np.zeros(4)
+        self.p_cur_hrz.value = np.zeros(self.n_hrz)
         self.p_xref_hrz.value = np.zeros((4, self.N + 1))
         self.p_axy_lim.value = 0.17
         self.p_dxy.value = np.zeros(2)
         self.p_uss.value = np.zeros(2)
         self.prob_hrz.solve(solver=cp.OSQP)
         
-        self.p_cur_vrt.value = np.zeros(2)
+        self.p_cur_vrt.value = np.zeros(self.n_vrt)
         self.p_xref_vrt.value = np.zeros(2)
         self.p_z_plat.value = 0.0
         self.p_r_cone.value = np.full(self.N + 1, -100.0)
         self.p_ge.value = np.zeros(self.N)
         self.p_d.value = 0.0
+        self.p_z_contact.value = -100.0
+        self.p_vz_tgt.value = 0.0
+        self.p_imp_off.value = 0.0
         self.prob_vrt.solve(solver=cp.OSQP)
         print("Warm-up completato.")
 
@@ -303,8 +520,18 @@ class HybridController:
     def compute(self, cur_pos, cur_vel, target_pos, target_yaw=0.0,
                 target_vel=None, a_xy_lim=0.17, final_pos=None, landing=False,
                 ramp_ref_vel=None, z_ground=None, z_ground_ge=None,
-                cmd_saturated_prev=False):
+                cmd_saturated_prev=False, R_drone=None, R_target=None):
+        # R_drone / R_target: matrici di rotazione rispetto al MONDO (3x3).
+        # Se mancano, o se lo yaw e' disabilitato, non si ruota niente e il
+        # comportamento e' identico a prima del controllo di imbardata.
         self.control_counter += 1
+        now = time.perf_counter()
+        if R_drone is not None and self.yaw_enabled:
+            Rd = np.asarray(R_drone, float)
+            self.yaw_drone = math.atan2(Rd[1, 0], Rd[0, 0])
+        elif not self.yaw_enabled:
+            self.yaw_drone = 0.0
+        yaw_rate = self._yaw_rate_cmd(R_drone, R_target, now)
         if z_ground is not None:
             self.z_ground = float(z_ground)
         # se il main non passa la superficie si ricade sulla quota di contatto
@@ -313,7 +540,6 @@ class HybridController:
             self.z_ground_ge = float(z_ground_ge)
         elif z_ground is not None:
             self.z_ground_ge = float(z_ground)
-        now = time.perf_counter()
         self._observer_update(float(cur_pos[2]), cur_vel, now, cmd_saturated_prev)
         cur_pos = np.asarray(cur_pos, float)
         cur_vel = np.asarray(cur_vel, float)
@@ -362,24 +588,118 @@ class HybridController:
             self.log_eps_max = float("nan")
             self.log_ge0 = float("nan")
             self.log_ge_h0 = float("nan")
+            self.log_hv0 = float("nan")
+            self.log_eps_imp = float("nan")
             self.mpc_step = 0
+            # target_yaw resta 0: i roll/pitch del DSL-PID sono riferiti al
+            # MONDO e passargli lo yaw reale NON li ruota (as_euler('XYZ')
+            # restituisce lo stesso pitch per qualunque yaw). La rotazione la
+            # fa _world_to_body in fondo, per entrambi i rami.
             force, euler = self._pid_reach(
-                cur_pos, cur_vel, target_pos, target_yaw, target_vel + ramp_ref_vel)
+                cur_pos, cur_vel, target_pos, 0.0, target_vel + ramp_ref_vel)
             self.last_pid_force, self.last_pid_euler = force, np.asarray(euler, float).copy()
             mode = 0
 
-        # accelerazione comandata in questo tick (stessa convenzione di B_hrz:
-        # pitch positivo -> +x, roll positivo -> -y)
-        phi, theta = float(euler[0]), float(euler[1])
-        fm = force / self.M
-        a_cmd = np.array([fm * math.cos(phi) * math.sin(theta),
-                          -fm * math.sin(phi),
-                          fm * math.cos(phi) * math.cos(theta) - self.g])
+        # MONDO -> CORPO, una volta sola per entrambi i rami. a_cmd esce di qui
+        # gia' nel frame del mondo, che e' quello in cui lavora l'osservatore.
+        phi_b, theta_b, a_cmd = self._world_to_body(
+            float(euler[0]), float(euler[1]), force)
+        euler = np.array([phi_b, theta_b, yaw_rate], dtype=float)
         ge_now = float(self._ge_accel(float(cur_pos[2]) - self.z_ground_ge)) if self.ge_enabled else 0.0
         self._obs_prev = (a_cmd, ge_now, now)
+        # stato di accelerazione del modello con ritardo: e' il filtro del
+        # primo ordine del comando, cioe' esattamente la dinamica che l'MPC
+        # mette in A_hrz. Si aggiorna a ogni tick (dt), non solo quando gira
+        # l'MPC, cosi' al latch del gate parte da un valore sensato.
+        # Due costanti diverse: l'orizzontale aspetta la rotazione del drone,
+        # il verticale no. Ogni filtro usa la stessa tau del modello che
+        # alimenta, altrimenti lo stato iniziale passato al QP non e' lo stato
+        # del modello del QP.
+        if self.att_lag_enabled:
+            lam_h = float(np.clip(self.dt / max(self.att_tau, 1e-3), 0.0, 1.0))
+            self._a_hrz += lam_h * (np.asarray(a_cmd, float)[0:2] - self._a_hrz)
+        if self.vrt_lag_enabled:
+            # a_cmd[2] e' l'accelerazione verticale COMANDATA nel frame mondo
+            # (gia' al netto dell'inclinazione): e' l'ingresso u che il modello
+            # verticale filtra. Effetto suolo e disturbo non entrano qui, sono
+            # accelerazioni reali e il QP li tratta a parte con E_vrt.
+            lam_v = float(np.clip(self.dt / max(self.vrt_tau, 1e-3), 0.0, 1.0))
+            self._a_vrt += lam_v * (float(np.asarray(a_cmd, float)[2]) - self._a_vrt)
         self.log_d_hat = self.d_hat
         self.log_d_xy = self.d_xy.copy()
+        # il terzo valore e' la VELOCITA' di imbardata [rad/s], non un angolo
         return force, float(euler[0]), float(euler[1]), float(euler[2]), mode
+
+    def _yaw_error(self, R_drone, R_target):
+        """Errore di imbardata [rad] dalla rotazione relativa, in angolo-asse.
+
+        R_err = R_drone^T R_target porta il frame del drone su quello del
+        target; il logaritmo della matrice ne da' il vettore rotazione (asse per
+        angolo) e la sua componente z e' l'imbardata da annullare.
+        """
+        R_err = np.asarray(R_drone, float).T @ np.asarray(R_target, float)
+        e = float(Rotation.from_matrix(R_err).as_rotvec()[2])
+        sym = float(self.yaw_symmetry)
+        if sym > 0:                       # wrap in (-sym/2, +sym/2]
+            e -= sym * math.floor(e / sym + 0.5)
+        return e
+
+    def _yaw_rate_cmd(self, R_drone, R_target, now=None):
+        """Velocita' di imbardata comandata [rad/s]."""
+        if not self.yaw_enabled or R_drone is None or R_target is None:
+            self.log_yaw_err = float("nan")
+            self.log_yaw_rate = 0.0
+            return 0.0
+        e = self._yaw_error(R_drone, R_target)
+        self.log_yaw_err = e
+        if abs(e) < self.yaw_deadband:
+            self.log_yaw_rate = 0.0
+            return 0.0
+        r = float(np.clip(self.yaw_kp * e, -self.yaw_rate_max, self.yaw_rate_max))
+        r *= self.yaw_rate_sign
+        self.log_yaw_rate = r
+        return r
+
+    def _world_to_body(self, phi_w, theta_w, force):
+        """(roll, pitch) dal frame MONDO a quello del DRONE.
+
+        Esatta, non a piccoli angoli: si passa per l'accelerazione, si ruota di
+        -psi e si torna agli angoli.
+
+        ATTENZIONE AL RAMO. La coppia (roll, pitch) non e' unica: la stessa
+        rotazione si scrive in due modi (doppia copertura), e il DSL-PID
+        restituisce regolarmente quello "flippato", con roll vicino a +-180 e
+        pitch di segno opposto. Succede ogni volta che target_thrust[2] diventa
+        negativo, cioe' con il drone sopra il waypoint che scende: su stati
+        realistici capita nel ~79% dei campioni. Ricostruire gli angoli con
+        asin, che vive in [-90, +90], collassa quel ramo sull'altro e cambia il
+        comando in modo drastico (roll 179 -> 1 deg: spinta in basso che diventa
+        spinta in alto). Qui il ramo d'ingresso viene riconosciuto dal segno di
+        cos(phi_w) e riprodotto in uscita, e il pitch si ricostruisce con atan2
+        invece che con asin, cosi' resta corretto anche oltre i 90 gradi.
+        """
+        psi = self.yaw_drone
+        fm = max(force / self.M, 1e-6)
+        cphi_w = math.cos(phi_w)
+        ax = fm * cphi_w * math.sin(theta_w)
+        ay = -fm * math.sin(phi_w)
+        azg = fm * cphi_w * math.cos(theta_w)          # = az + g
+        a_world = np.array([ax, ay, azg - self.g])
+        if abs(psi) < 1e-12:
+            return phi_w, theta_w, a_world
+        c, s_ = math.cos(psi), math.sin(psi)
+        ax_b = c * ax + s_ * ay
+        ay_b = -s_ * ax + c * ay
+        sphi = float(np.clip(-ay_b / fm, -1.0, 1.0))
+        if cphi_w >= 0.0:                               # ramo "normale"
+            phi_b = math.asin(sphi)
+            theta_b = math.atan2(ax_b, azg)
+        else:                                           # ramo flippato
+            phi_b = math.pi - math.asin(sphi)
+            if phi_b > math.pi:
+                phi_b -= 2.0 * math.pi
+            theta_b = math.atan2(-ax_b, -azg)
+        return phi_b, theta_b, a_world
 
     def _observer_reset(self):
         self._obs_v0 = None
@@ -493,7 +813,12 @@ class HybridController:
         return in_x and in_y and in_z
 
     def _mpc_horizontal(self, cur_x, cur_y, cur_vx, cur_vy, wp, a_xy_lim, target_vel):
-        self.p_cur_hrz.value = np.array([cur_x, cur_y, cur_vx, cur_vy])
+        cur = np.array([cur_x, cur_y, cur_vx, cur_vy], dtype=float)
+        if self.n_hrz == 6:
+            # l'accelerazione non si misura: si usa lo stato del modello di
+            # ritardo, aggiornato a ogni tick in compute() sul comando inviato
+            cur = np.concatenate([cur, self._a_hrz])
+        self.p_cur_hrz.value = cur
         self.p_axy_lim.value = a_xy_lim
         dxy = self.d_xy if self.dist_xy_enabled else np.zeros(2)
         self.p_dxy.value = dxy
@@ -558,9 +883,28 @@ class HybridController:
         self.log_ge0 = float(ge[0])
         self.log_ge_h0 = float(max(cur_z - self.z_ground_ge, self.ge_h_min))
 
-        self.p_cur_vrt.value = np.array([cur_z, cur_vz])
+        # stato iniziale: con il ritardo c'e' una terza componente, l'accelerazione
+        # verticale del modello, aggiornata a ogni tick in compute() (non si misura).
+        if self.n_vrt == 3:
+            self.p_cur_vrt.value = np.array([cur_z, cur_vz, self._a_vrt])
+        else:
+            self.p_cur_vrt.value = np.array([cur_z, cur_vz])
         self.p_xref_vrt.value = np.array([wp[2], 0.0])
+        # Il pavimento del CONO deve stare SOTTO il bersaglio verticale, altrimenti
+        # h0 -> 0 proprio al contatto e la barriera vieta di atterrare (provato il
+        # 9/10: con p_z_plat = z_ground il margine scendeva a 0.1 cm e lo slack del
+        # cono restava attivo per tutta la discesa). wp[2] e' gia' LAND_UNDERSHOOT
+        # sotto il contatto: e' quello il margine che rende il landing ammissibile.
         self.p_z_plat.value = wp[2]
+
+        # barriera di impatto: quota di contatto = self.z_ground (quota che
+        # l'origine del corpo ha a contatto avvenuto), non la superficie.
+        vz_tgt = float(target_vel[2]) if target_vel is not None else 0.0
+        self.p_z_contact.value = float(self.z_ground)
+        self.p_vz_tgt.value = vz_tgt
+        self.p_imp_off.value = 0.0 if self.imp_enabled else 1e3
+        self.log_hv0 = float(self.imp_vtd + (cur_vz - vz_tgt)
+                             + self.imp_kv * (cur_z - self.z_ground))
 
         if use_cone:
             ex = np.asarray(x_pred) - (wp[0] + target_vel[0] * np.arange(self.N + 1) * self.mpc_dt)
@@ -579,6 +923,7 @@ class HybridController:
             self.log_az_mpc = float("nan")
             self.log_eps0 = float("nan")
             self.log_eps_max = float("nan")
+            self.log_eps_imp = float("nan")
             return 0.0
         az = float(self.u_vrt[0, 0].value)
         self.log_az_mpc = az
@@ -591,4 +936,7 @@ class HybridController:
             # cono disattivato (solve orizzontale fallito): slack senza significato
             self.log_eps0 = float("nan")
             self.log_eps_max = float("nan")
+        ei = self.eps_imp.value
+        self.log_eps_imp = (float(np.maximum(np.asarray(ei, float), 0.0).max())
+                            if (self.imp_enabled and ei is not None) else float("nan"))
         return az
