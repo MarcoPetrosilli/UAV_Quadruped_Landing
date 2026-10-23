@@ -117,15 +117,23 @@ class HybridController:
 
         # ---- MPC weights ---------------------------------------------------
 
+        # Baseline 
         self.Q_hrz = np.diag([3.0, 3.0, 4.0, 4.0])
         self.R_hrz = np.diag([7.0, 7.0])
         self.Q_vrt = np.diag([2.0, 1.5])
         self.R_vrt = np.diag([3.0])
 
+        # Conservative 
         #self.Q_hrz = np.diag([3.0, 3.0, 4.0, 4.0])
         #self.R_hrz = np.diag([7.0, 7.0])
         #self.Q_vrt = np.diag([1.0, 2.0])
-        #self.R_vrt = np.diag([15.0])
+        #self.R_vrt = np.diag([10.0])
+        
+        # Aggressive
+        #self.Q_hrz = np.diag([3.0, 3.0, 4.0, 4.0])
+        #self.R_hrz = np.diag([7.0, 7.0])
+        #self.Q_vrt = np.diag([8.0, 0.75])
+        #self.R_vrt = np.diag([1.5])
         
         # ---- Cone CBF (glideslope) -----------------------------------------
         self.cbf_cone_enabled = True
@@ -137,7 +145,7 @@ class HybridController:
         # catena  h0 -> h1 -> h2 ,  vincolo su h2 >= 0 (rilassato con slack).
         # Inizializzati uguali cosi' si parte da un comportamento noto; tarabili
         # indipendentemente (e' il vantaggio della HOCBF).
-        self.gamma_cbf = 0.5          # mantenuto per retro-compatibilita' / riferimento
+        self.gamma_cbf = 0.5         # mantenuto per retro-compatibilita' / riferimento
         self.gamma1_cbf = 0.5         # livello 1
         self.gamma2_cbf = 0.5         # livello 2
         # ---- effetto suolo nel modello verticale ----------------------------
@@ -157,14 +165,14 @@ class HybridController:
         # la quota che l'origine del corpo AVRA' a contatto avvenuto, quindi h=0
         # al contatto mentre i rotori sono ancora ~3.5 cm sopra la superficie.
         # Risultato: h sottostimata di una costante pari a quell'offset, e
-        # siccome il clamp k_max scatta sotto 3.4 cm, il modello saturava a
+        # siccome il clamp k_max scat4ta sotto 3.4 cm, il modello saturava a
         # 0.98 m/s^2 in OGNI atterraggio (voli 175138/175926/181036/181649),
         # con l'MPC che toglieva ~1 m/s^2 proprio nel flare. Da qui in poi il
         # modello usa un suolo suo, self.z_ground_ge, che il main riempie con
         # la superficie vera; self.z_ground resta la quota di contatto e serve
         # solo al congelamento dell'osservatore (dist_freeze_h).
         self.ge_enabled = True
-        self.ge_r_eff = 0.065        # raggio efficace [m]. Rifit 1/10 sulla h
+        self.ge_r_eff = 0.075        # raggio efficace [m]. Rifit 1/10 sulla h
                                      # corretta, voli 125809 e 131434: RMS 1.6%
                                      # sui 5-36 cm (contro 2.0% con 65 mm e 1.8%
                                      # con 85). Il vecchio 41 mm veniva da un fit
@@ -252,9 +260,9 @@ class HybridController:
         # impatto e' la specifica fisica, il corridoio e' una preferenza.
         self.imp_enabled = True
         self.imp_vtd = 0.05          # velocita' di contatto ammessa [m/s]
-        self.imp_kv = 0.5            # pendenza della barriera [1/s]: con vz di
+        self.imp_kv = 1.3          # pendenza della barriera [1/s]: con vz di
                                      # crociera 0.5 m/s morde sotto ~32 cm
-        self.imp_gamma = 0.2         # classe-K discreta (come il cono)
+        self.imp_gamma = 1.0         # classe-K discreta (come il cono)
         self.rho_imp = 1e6           # peso dello slack (>> rho_slack del cono)
         self.log_hv0 = float("nan")  # valore della barriera al passo 0 [m/s]
         self.log_eps_imp = float("nan")
@@ -296,8 +304,8 @@ class HybridController:
         self.log_yaw_rate = float("nan")
 
         self.z_cut = 1.5
-        self.r_base = 0.03
-        self.rho_slack = 1e5        # peso penalita' slack del cono (grande = slack usato solo se necessario)
+        self.r_base = 0.06
+        self.rho_slack = 1e6        # peso penalita' slack del cono (grande = slack usato solo se necessario)
 
         # ---- multi-rate decimation -----------------------------------------
         self.control_counter = 0

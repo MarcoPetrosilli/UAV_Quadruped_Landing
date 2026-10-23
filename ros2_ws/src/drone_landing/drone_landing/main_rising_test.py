@@ -155,7 +155,7 @@ PLATFORM_AVG_N   = 50      # campioni mediati per fissare il target (~0.5 s a 10
 # simulazione fino a 60 s). Il riferimento viene quindi messo LAND_UNDERSHOOT
 # sotto Z_LAND: la soglia viene attraversata con pochi cm/s, e il contatto
 # fisico ferma comunque il drone.
-LAND_UNDERSHOOT  = 0.05    # [m]. Alzato da 0.02 il 9/10. Con l'anello verticale
+LAND_UNDERSHOOT  = 0.0    # [m]. Alzato da 0.02 il 9/10. Con l'anello verticale
                            # tarato su Q_vrt=[2,1.5] e R_vrt=3 la costante di
                            # tempo vale 1.37 s, quindi la velocita' prodotta e'
                            # circa (quota - riferimento)/tau: con 2 cm di
@@ -684,6 +684,30 @@ def _config_snapshot(ctrl=None):
     return cfg
 
 
+def _eps_imp_first(c):
+    """Slack della barriera d'impatto al PRIMO passo dell'orizzonte [m/s].
+
+    Il controllore logga solo il MASSIMO sull'orizzonte (log_eps_imp), che non
+    dice DOVE sta l'infattibilita': uno slack pagato venti passi avanti, dove la
+    traiettoria predetta e' gia' sotto il piatto, e' una cosa diversa da uno
+    slack pagato adesso. Il passo 0 e' quello confrontabile con h_v(0) misurato.
+
+    Si legge direttamente dalla variabile cvxpy del controllore, cosi' questa
+    diagnostica non richiede modifiche a controller_deploy.py. Se il campo non
+    c'e', o il solve verticale non ha prodotto valori, resta NaN e la curva
+    semplicemente non compare.
+    """
+    try:
+        if not getattr(c, "imp_enabled", False):
+            return float("nan")
+        ei = c.eps_imp.value
+        if ei is None:
+            return float("nan")
+        return float(max(float(np.asarray(ei, float).ravel()[0]), 0.0))   # OSQP puo' dare -1e-6
+    except Exception:
+        return float("nan")
+
+
 def save_and_plot(rows, ctrl=None):
     if not rows:
         print("nessun dato da plottare"); return
@@ -696,7 +720,7 @@ def save_and_plot(rows, ctrl=None):
             "cmd_ctrl", "spool_ceil", "accz", "hover_raw", "hover_cmd",
             "hover_est", "hover_b50", "hover_kf", "kf_sigma", "kf_used", "b50_n", "hover_vbat",
             "az_mpc", "eps0", "eps_max", "ge_az", "ge_h", "d_hat", "d_x", "d_y",
-            "z_ground", "ge_ground", "hv0", "eps_imp", "yaw_drone", "yaw_err", "yaw_rate",
+            "z_ground", "ge_ground", "hv0", "eps_imp", "eps_imp0", "yaw_drone", "yaw_err", "yaw_rate",
             "yaw_plat", "yaw_plat_raw", "pose_age"]
     # --- configurazione del volo, salvata insieme ai dati ---------------------
     # Due copie, per motivi diversi:
@@ -863,7 +887,9 @@ def save_and_plot(rows, ctrl=None):
     ax[10].plot(t, a["eps0"], color="tab:red", lw=1.3, label="eps primo passo")
     ax[10].plot(t, a["eps_max"], color="tab:brown", lw=1.0, ls="--", label="eps max orizzonte")
     ax[10].plot(t, a["eps_imp"], color="tab:blue", lw=1.2, ls="-.",
-                label="slack barriera impatto")
+                label="slack impatto, max orizzonte")
+    ax[10].plot(t, a["eps_imp0"], color="tab:cyan", lw=1.6,
+                label="slack impatto, PRIMO PASSO")
     ax[10].plot(t, a["hv0"], color="tab:green", lw=1.3,
                 label="h_v (margine di impatto) [m/s]")
     ax[10].axhline(0, color="k", lw=0.6)
@@ -1019,7 +1045,7 @@ def plot_final_phase(a, state_str, stamp, plt,
     # i CSV piu' vecchi non hanno tutte le colonne: quelle mancanti diventano NaN
     # cosi' il plot si genera lo stesso con le curve vuote.
     n = len(a["t"])
-    for c in ("z_ground", "ge_h", "ge_az", "hv0", "eps0", "eps_max", "eps_imp",
+    for c in ("z_ground", "ge_h", "ge_az", "hv0", "eps0", "eps_max", "eps_imp", "eps_imp0",
               "d_hat", "d_x", "d_y", "az_mpc", "accz", "hover_cmd",
               "target_x", "target_y", "target_vz", "ref_vz", "mode"):
         if c not in a or len(np.atleast_1d(a[c])) != n:
@@ -1118,7 +1144,8 @@ def plot_final_phase(a, state_str, stamp, plt,
     P6b = P[6].twinx()
     P6b.plot(tt, 1e3 * a["eps0"][s], color="tab:red", lw=1.2, label="slack cono, primo passo")
     P6b.plot(tt, 1e3 * a["eps_max"][s], color="tab:brown", lw=1.0, ls="--", label="slack cono, max")
-    P6b.plot(tt, 1e3 * a["eps_imp"][s], color="tab:blue", lw=1.2, ls="-.", label="slack impatto")
+    P6b.plot(tt, 1e3 * a["eps_imp"][s], color="tab:blue", lw=1.2, ls="-.", label="slack impatto, max")
+    P6b.plot(tt, 1e3 * a["eps_imp0"][s], color="tab:cyan", lw=1.6, label="slack impatto, primo passo")
     P6b.set_ylabel("slack [mm]")
     hl, ll = P[6].get_legend_handles_labels(); h2, l2 = P6b.get_legend_handles_labels()
     P[6].legend(hl + h2, ll + l2, loc="upper right", fontsize=7)
@@ -1550,7 +1577,7 @@ class LandingNode(Node):
         
         self.V_LAND = 0.5
         self.V_NAV  = 0.3     # velocita' carrot in rising/nav [m/s]
-        self.V_HOLD = 0.3     # velocita' carrot in hold [m/s]
+        self.V_HOLD = 0.6     # velocita' carrot in hold [m/s]
 
         # stato del drone (aggiornato dal callback asincrono del logger) e
         # posizione dal mocap (aggiornata dalla callback _on_pose)
@@ -2232,6 +2259,7 @@ class LandingNode(Node):
             ge_ground=(self._ge_ground if self._ge_ground is not None else float("nan")),
             hv0=getattr(c, "log_hv0", float("nan")),
             eps_imp=getattr(c, "log_eps_imp", float("nan")),
+            eps_imp0=_eps_imp_first(c),
             yaw_drone=math.degrees(getattr(c, "yaw_drone", float("nan"))),
             yaw_err=math.degrees(getattr(c, "log_yaw_err", float("nan"))),
             yaw_rate=math.degrees(getattr(c, "log_yaw_rate", float("nan"))),
@@ -2704,7 +2732,16 @@ class LandingNode(Node):
         try:
             # le righe "pose_lost" non hanno posizione: fuori dai grafici 3D
             plot_advanced_diagnostics(rows=[r for r in self.rows if r["state"] != "pose_lost"],
-                                      stamp=stamp, alpha_cone=ALPHA_CONE, z_cut=1.5, r_base=0.3)
+                                      stamp=stamp,
+                                      # Il cono DISEGNATO deve essere quello IMPOSTO dalla
+                                      # barriera, non la geometria del punto di hold: alpha,
+                                      # z_cut e r_base si leggono dal controllore. Con i due
+                                      # alpha disaccoppiati (hold nel main, barriera nel
+                                      # controllore) passare ALPHA_CONE qui disegnava il cono
+                                      # sbagliato proprio nei voli in cui la differenza conta.
+                                      alpha_cone=getattr(self.ctrl, "alpha_cone", ALPHA_CONE),
+                                      z_cut=getattr(self.ctrl, "z_cut", 1.5),
+                                      r_base=getattr(self.ctrl, "r_base", 0.03))
         except Exception as e:
             self.get_logger().warn(f"diagnostica avanzata non generata: {e}")
         self.get_logger().info("Fatto. Puoi chiudere con Ctrl+C.")
