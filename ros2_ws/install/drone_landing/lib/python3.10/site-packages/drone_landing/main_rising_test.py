@@ -1577,7 +1577,7 @@ class LandingNode(Node):
         
         self.V_LAND = 0.5
         self.V_NAV  = 0.3     # velocita' carrot in rising/nav [m/s]
-        self.V_HOLD = 0.6     # velocita' carrot in hold [m/s]
+        self.V_HOLD = 0.3     # velocita' carrot in hold [m/s]
 
         # stato del drone (aggiornato dal callback asincrono del logger) e
         # posizione dal mocap (aggiornata dalla callback _on_pose)

@@ -9,9 +9,8 @@ setup.py
 ../../build/drone_landing/drone_landing.egg-info/top_level.txt
 ../../build/drone_landing/drone_landing.egg-info/zip-safe
 drone_landing/__init__.py
-drone_landing/controller_deploy (copy).py
 drone_landing/controller_deploy.py
-drone_landing/controller_deploy_sim.py
+drone_landing/controller_deploy_circle.py
 drone_landing/main_alpha_landing.py
 drone_landing/main_rising_test.py
 drone_landing/main_rising_test_backup.py

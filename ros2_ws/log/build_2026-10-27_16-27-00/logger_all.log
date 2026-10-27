@@ -1,0 +1,1040 @@
+[0.059s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build']
+[0.059s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=False, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=12, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=None, packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0x76fc0bcf62f0>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x76fc0bcf5de0>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x76fc0bcf5de0>>)
+[0.151s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.151s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.151s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.151s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.152s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.152s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.152s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/lab/ros2_ws'
+[0.152s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.152s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.152s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.152s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.152s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.152s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.152s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.152s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.152s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.158s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.158s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.158s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.158s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.158s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.158s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.158s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extensions ['ignore', 'ignore_ament_install']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extension 'ignore'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extension 'ignore_ament_install'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extensions ['colcon_pkg']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extension 'colcon_pkg'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extensions ['colcon_meta']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extension 'colcon_meta'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extensions ['ros']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extension 'ros'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extensions ['cmake', 'python']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extension 'cmake'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extension 'python'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extensions ['python_setup_py']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots) by extension 'python_setup_py'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extensions ['ignore', 'ignore_ament_install']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extension 'ignore'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extension 'ignore_ament_install'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extensions ['colcon_pkg']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extension 'colcon_pkg'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extensions ['colcon_meta']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extension 'colcon_meta'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extensions ['ros']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extension 'ros'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extensions ['cmake', 'python']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extension 'cmake'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extension 'python'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extensions ['python_setup_py']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B1) by extension 'python_setup_py'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extensions ['ignore', 'ignore_ament_install']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extension 'ignore'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extension 'ignore_ament_install'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extensions ['colcon_pkg']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extension 'colcon_pkg'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extensions ['colcon_meta']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extension 'colcon_meta'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extensions ['ros']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extension 'ros'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extensions ['cmake', 'python']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extension 'cmake'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extension 'python'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extensions ['python_setup_py']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10) by extension 'python_setup_py'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extensions ['ignore', 'ignore_ament_install']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extension 'ignore'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extension 'ignore_ament_install'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extensions ['colcon_pkg']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extension 'colcon_pkg'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extensions ['colcon_meta']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extension 'colcon_meta'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extensions ['ros']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extension 'ros'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extensions ['cmake', 'python']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extension 'cmake'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extension 'python'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extensions ['python_setup_py']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_005) by extension 'python_setup_py'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extensions ['ignore', 'ignore_ament_install']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extension 'ignore'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extension 'ignore_ament_install'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extensions ['colcon_pkg']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extension 'colcon_pkg'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extensions ['colcon_meta']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extension 'colcon_meta'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extensions ['ros']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extension 'ros'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extensions ['cmake', 'python']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extension 'cmake'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extension 'python'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extensions ['python_setup_py']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B10/vtd_07) by extension 'python_setup_py'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extensions ['ignore', 'ignore_ament_install']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extension 'ignore'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extension 'ignore_ament_install'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extensions ['colcon_pkg']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extension 'colcon_pkg'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extensions ['colcon_meta']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extension 'colcon_meta'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extensions ['ros']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extension 'ros'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extensions ['cmake', 'python']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extension 'cmake'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extension 'python'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extensions ['python_setup_py']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2) by extension 'python_setup_py'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extensions ['ignore', 'ignore_ament_install']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extension 'ignore'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extension 'ignore_ament_install'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extensions ['colcon_pkg']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extension 'colcon_pkg'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extensions ['colcon_meta']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extension 'colcon_meta'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extensions ['ros']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extension 'ros'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extensions ['cmake', 'python']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extension 'cmake'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extension 'python'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extensions ['python_setup_py']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/fixed) by extension 'python_setup_py'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extensions ['ignore', 'ignore_ament_install']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extension 'ignore'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extension 'ignore_ament_install'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extensions ['colcon_pkg']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extension 'colcon_pkg'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extensions ['colcon_meta']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extension 'colcon_meta'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extensions ['ros']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extension 'ros'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extensions ['cmake', 'python']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extension 'cmake'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extension 'python'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extensions ['python_setup_py']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B2/moving) by extension 'python_setup_py'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extensions ['ignore', 'ignore_ament_install']
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extension 'ignore'
+[0.161s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extension 'ignore_ament_install'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extensions ['colcon_pkg']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extension 'colcon_pkg'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extensions ['colcon_meta']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extension 'colcon_meta'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extensions ['ros']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extension 'ros'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extensions ['cmake', 'python']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extension 'cmake'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extension 'python'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extensions ['python_setup_py']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B3) by extension 'python_setup_py'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extensions ['ignore', 'ignore_ament_install']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extension 'ignore'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extension 'ignore_ament_install'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extensions ['colcon_pkg']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extension 'colcon_pkg'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extensions ['colcon_meta']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extension 'colcon_meta'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extensions ['ros']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extension 'ros'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extensions ['cmake', 'python']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extension 'cmake'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extension 'python'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extensions ['python_setup_py']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B4) by extension 'python_setup_py'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extensions ['ignore', 'ignore_ament_install']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extension 'ignore'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extension 'ignore_ament_install'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extensions ['colcon_pkg']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extension 'colcon_pkg'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extensions ['colcon_meta']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extension 'colcon_meta'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extensions ['ros']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extension 'ros'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extensions ['cmake', 'python']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extension 'cmake'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extension 'python'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extensions ['python_setup_py']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B5) by extension 'python_setup_py'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extensions ['ignore', 'ignore_ament_install']
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extension 'ignore'
+[0.162s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extension 'ignore_ament_install'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extensions ['colcon_pkg']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extension 'colcon_pkg'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extensions ['colcon_meta']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extension 'colcon_meta'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extensions ['ros']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extension 'ros'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extensions ['cmake', 'python']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extension 'cmake'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extension 'python'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extensions ['python_setup_py']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7) by extension 'python_setup_py'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extensions ['ignore', 'ignore_ament_install']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extension 'ignore'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extension 'ignore_ament_install'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extensions ['colcon_pkg']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extension 'colcon_pkg'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extensions ['colcon_meta']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extension 'colcon_meta'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extensions ['ros']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extension 'ros'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extensions ['cmake', 'python']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extension 'cmake'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extension 'python'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extensions ['python_setup_py']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_1) by extension 'python_setup_py'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extensions ['ignore', 'ignore_ament_install']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extension 'ignore'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extension 'ignore_ament_install'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extensions ['colcon_pkg']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extension 'colcon_pkg'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extensions ['colcon_meta']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extension 'colcon_meta'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extensions ['ros']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extension 'ros'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extensions ['cmake', 'python']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extension 'cmake'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extension 'python'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extensions ['python_setup_py']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B7/B7_alpha_2) by extension 'python_setup_py'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extensions ['ignore', 'ignore_ament_install']
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extension 'ignore'
+[0.163s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extension 'ignore_ament_install'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extensions ['colcon_pkg']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extension 'colcon_pkg'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extensions ['colcon_meta']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extension 'colcon_meta'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extensions ['ros']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extension 'ros'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extensions ['cmake', 'python']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extension 'cmake'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extension 'python'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extensions ['python_setup_py']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B8) by extension 'python_setup_py'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extensions ['ignore', 'ignore_ament_install']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extension 'ignore'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extension 'ignore_ament_install'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extensions ['colcon_pkg']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extension 'colcon_pkg'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extensions ['colcon_meta']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extension 'colcon_meta'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extensions ['ros']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extension 'ros'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extensions ['cmake', 'python']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extension 'cmake'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extension 'python'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extensions ['python_setup_py']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/B9) by extension 'python_setup_py'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extensions ['ignore', 'ignore_ament_install']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extension 'ignore'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extension 'ignore_ament_install'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extensions ['colcon_pkg']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extension 'colcon_pkg'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extensions ['colcon_meta']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extension 'colcon_meta'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extensions ['ros']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extension 'ros'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extensions ['cmake', 'python']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extension 'cmake'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extension 'python'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extensions ['python_setup_py']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST) by extension 'python_setup_py'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extensions ['ignore', 'ignore_ament_install']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extension 'ignore'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extension 'ignore_ament_install'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extensions ['colcon_pkg']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extension 'colcon_pkg'
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extensions ['colcon_meta']
+[0.164s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extension 'colcon_meta'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extensions ['ros']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extension 'ros'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extensions ['cmake', 'python']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extension 'cmake'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extension 'python'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extensions ['python_setup_py']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/higher_slack) by extension 'python_setup_py'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extensions ['ignore', 'ignore_ament_install']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extension 'ignore'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extension 'ignore_ament_install'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extensions ['colcon_pkg']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extension 'colcon_pkg'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extensions ['colcon_meta']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extension 'colcon_meta'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extensions ['ros']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extension 'ros'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extensions ['cmake', 'python']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extension 'cmake'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extension 'python'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extensions ['python_setup_py']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/CONE_TEST/normal_slack) by extension 'python_setup_py'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extensions ['ignore', 'ignore_ament_install']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extension 'ignore'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extension 'ignore_ament_install'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extensions ['colcon_pkg']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extension 'colcon_pkg'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extensions ['colcon_meta']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extension 'colcon_meta'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extensions ['ros']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extension 'ros'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extensions ['cmake', 'python']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extension 'cmake'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extension 'python'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extensions ['python_setup_py']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER) by extension 'python_setup_py'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extensions ['ignore', 'ignore_ament_install']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extension 'ignore'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extension 'ignore_ament_install'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extensions ['colcon_pkg']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extension 'colcon_pkg'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extensions ['colcon_meta']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extension 'colcon_meta'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extensions ['ros']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extension 'ros'
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extensions ['cmake', 'python']
+[0.165s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extension 'cmake'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extension 'python'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extensions ['python_setup_py']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/moving_trials) by extension 'python_setup_py'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extensions ['ignore', 'ignore_ament_install']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extension 'ignore'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extension 'ignore_ament_install'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extensions ['colcon_pkg']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extension 'colcon_pkg'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extensions ['colcon_meta']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extension 'colcon_meta'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extensions ['ros']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extension 'ros'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extensions ['cmake', 'python']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extension 'cmake'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extension 'python'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extensions ['python_setup_py']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old) by extension 'python_setup_py'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extensions ['ignore', 'ignore_ament_install']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extension 'ignore'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extension 'ignore_ament_install'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extensions ['colcon_pkg']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extension 'colcon_pkg'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extensions ['colcon_meta']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extension 'colcon_meta'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extensions ['ros']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extension 'ros'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extensions ['cmake', 'python']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extension 'cmake'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extension 'python'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extensions ['python_setup_py']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old) by extension 'python_setup_py'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extensions ['ignore', 'ignore_ament_install']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extension 'ignore'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extension 'ignore_ament_install'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extensions ['colcon_pkg']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extension 'colcon_pkg'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extensions ['colcon_meta']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extension 'colcon_meta'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extensions ['ros']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extension 'ros'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extensions ['cmake', 'python']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extension 'cmake'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extension 'python'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extensions ['python_setup_py']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1) by extension 'python_setup_py'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extensions ['ignore', 'ignore_ament_install']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extension 'ignore'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extension 'ignore_ament_install'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extensions ['colcon_pkg']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extension 'colcon_pkg'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extensions ['colcon_meta']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extension 'colcon_meta'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extensions ['ros']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extension 'ros'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extensions ['cmake', 'python']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extension 'cmake'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extension 'python'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extensions ['python_setup_py']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_1) by extension 'python_setup_py'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extensions ['ignore', 'ignore_ament_install']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extension 'ignore'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extension 'ignore_ament_install'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extensions ['colcon_pkg']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extension 'colcon_pkg'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extensions ['colcon_meta']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extension 'colcon_meta'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extensions ['ros']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extension 'ros'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extensions ['cmake', 'python']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extension 'cmake'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extension 'python'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extensions ['python_setup_py']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_14-10) by extension 'python_setup_py'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extensions ['ignore', 'ignore_ament_install']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extension 'ignore'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extension 'ignore_ament_install'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extensions ['colcon_pkg']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extension 'colcon_pkg'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extensions ['colcon_meta']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extension 'colcon_meta'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extensions ['ros']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extension 'ros'
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extensions ['cmake', 'python']
+[0.167s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extension 'cmake'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extension 'python'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extensions ['python_setup_py']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B1_old/B1_2) by extension 'python_setup_py'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extensions ['ignore', 'ignore_ament_install']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extension 'ignore'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extension 'ignore_ament_install'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extensions ['colcon_pkg']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extension 'colcon_pkg'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extensions ['colcon_meta']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extension 'colcon_meta'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extensions ['ros']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extension 'ros'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extensions ['cmake', 'python']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extension 'cmake'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extension 'python'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extensions ['python_setup_py']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/B3_old) by extension 'python_setup_py'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extensions ['ignore', 'ignore_ament_install']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extension 'ignore'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extension 'ignore_ament_install'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extensions ['colcon_pkg']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extension 'colcon_pkg'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extensions ['colcon_meta']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extension 'colcon_meta'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extensions ['ros']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extension 'ros'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extensions ['cmake', 'python']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extension 'cmake'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extension 'python'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extensions ['python_setup_py']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/old/voli_pilota) by extension 'python_setup_py'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extensions ['ignore', 'ignore_ament_install']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extension 'ignore'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extension 'ignore_ament_install'
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extensions ['colcon_pkg']
+[0.168s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extension 'colcon_pkg'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extensions ['colcon_meta']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extension 'colcon_meta'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extensions ['ros']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extension 'ros'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extensions ['cmake', 'python']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extension 'cmake'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extension 'python'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extensions ['python_setup_py']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/OTHER/sim_25_10) by extension 'python_setup_py'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extensions ['ignore', 'ignore_ament_install']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extension 'ignore'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extension 'ignore_ament_install'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extensions ['colcon_pkg']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extension 'colcon_pkg'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extensions ['colcon_meta']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extension 'colcon_meta'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extensions ['ros']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extension 'ros'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extensions ['cmake', 'python']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extension 'cmake'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extension 'python'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extensions ['python_setup_py']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test) by extension 'python_setup_py'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extensions ['ignore', 'ignore_ament_install']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extension 'ignore'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extension 'ignore_ament_install'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extensions ['colcon_pkg']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extension 'colcon_pkg'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extensions ['colcon_meta']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extension 'colcon_meta'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extensions ['ros']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extension 'ros'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extensions ['cmake', 'python']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extension 'cmake'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extension 'python'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extensions ['python_setup_py']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Fixed) by extension 'python_setup_py'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extensions ['ignore', 'ignore_ament_install']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extension 'ignore'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extension 'ignore_ament_install'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extensions ['colcon_pkg']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extension 'colcon_pkg'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extensions ['colcon_meta']
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extension 'colcon_meta'
+[0.169s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extensions ['ros']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extension 'ros'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extensions ['cmake', 'python']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extension 'cmake'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extension 'python'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extensions ['python_setup_py']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/PID_test/Moving) by extension 'python_setup_py'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extensions ['ignore', 'ignore_ament_install']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extension 'ignore'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extension 'ignore_ament_install'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extensions ['colcon_pkg']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extension 'colcon_pkg'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extensions ['colcon_meta']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extension 'colcon_meta'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extensions ['ros']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extension 'ros'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extensions ['cmake', 'python']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extension 'cmake'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extension 'python'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extensions ['python_setup_py']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST) by extension 'python_setup_py'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extensions ['ignore', 'ignore_ament_install']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extension 'ignore'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extension 'ignore_ament_install'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extensions ['colcon_pkg']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extension 'colcon_pkg'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extensions ['colcon_meta']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extension 'colcon_meta'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extensions ['ros']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extension 'ros'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extensions ['cmake', 'python']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extension 'cmake'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extension 'python'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extensions ['python_setup_py']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Aggressive) by extension 'python_setup_py'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extensions ['ignore', 'ignore_ament_install']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extension 'ignore'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extension 'ignore_ament_install'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extensions ['colcon_pkg']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extension 'colcon_pkg'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extensions ['colcon_meta']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extension 'colcon_meta'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extensions ['ros']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extension 'ros'
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extensions ['cmake', 'python']
+[0.170s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extension 'cmake'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extension 'python'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extensions ['python_setup_py']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/R_TEST/Conservative) by extension 'python_setup_py'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extensions ['ignore', 'ignore_ament_install']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extension 'ignore'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extension 'ignore_ament_install'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extensions ['colcon_pkg']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extension 'colcon_pkg'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extensions ['colcon_meta']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extension 'colcon_meta'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extensions ['ros']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extension 'ros'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extensions ['cmake', 'python']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extension 'cmake'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extension 'python'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extensions ['python_setup_py']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST) by extension 'python_setup_py'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extensions ['ignore', 'ignore_ament_install']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extension 'ignore'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extension 'ignore_ament_install'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extensions ['colcon_pkg']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extension 'colcon_pkg'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extensions ['colcon_meta']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extension 'colcon_meta'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extensions ['ros']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extension 'ros'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extensions ['cmake', 'python']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extension 'cmake'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extension 'python'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extensions ['python_setup_py']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.15) by extension 'python_setup_py'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extensions ['ignore', 'ignore_ament_install']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extension 'ignore'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extension 'ignore_ament_install'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extensions ['colcon_pkg']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extension 'colcon_pkg'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extensions ['colcon_meta']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extension 'colcon_meta'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extensions ['ros']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extension 'ros'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extensions ['cmake', 'python']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extension 'cmake'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extension 'python'
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extensions ['python_setup_py']
+[0.171s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.3) by extension 'python_setup_py'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extensions ['ignore', 'ignore_ament_install']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extension 'ignore'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extension 'ignore_ament_install'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extensions ['colcon_pkg']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extension 'colcon_pkg'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extensions ['colcon_meta']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extension 'colcon_meta'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extensions ['ros']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extension 'ros'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extensions ['cmake', 'python']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extension 'cmake'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extension 'python'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extensions ['python_setup_py']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/TAU_TEST/0.6) by extension 'python_setup_py'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extensions ['ignore', 'ignore_ament_install']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extension 'ignore'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extension 'ignore_ament_install'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extensions ['colcon_pkg']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extension 'colcon_pkg'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extensions ['colcon_meta']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extension 'colcon_meta'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extensions ['ros']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extension 'ros'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extensions ['cmake', 'python']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extension 'cmake'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extension 'python'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extensions ['python_setup_py']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST) by extension 'python_setup_py'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extensions ['ignore', 'ignore_ament_install']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extension 'ignore'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extension 'ignore_ament_install'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extensions ['colcon_pkg']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extension 'colcon_pkg'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extensions ['colcon_meta']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extension 'colcon_meta'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extensions ['ros']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extension 'ros'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extensions ['cmake', 'python']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extension 'cmake'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extension 'python'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extensions ['python_setup_py']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/kv) by extension 'python_setup_py'
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extensions ['ignore', 'ignore_ament_install']
+[0.172s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extension 'ignore'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extension 'ignore_ament_install'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extensions ['colcon_pkg']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extension 'colcon_pkg'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extensions ['colcon_meta']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extension 'colcon_meta'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extensions ['ros']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extension 'ros'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extensions ['cmake', 'python']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extension 'cmake'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extension 'python'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extensions ['python_setup_py']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/VERTICAL_V_TEST/slack_vtd) by extension 'python_setup_py'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extensions ['ignore', 'ignore_ament_install']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extension 'ignore'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extension 'ignore_ament_install'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extensions ['colcon_pkg']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extension 'colcon_pkg'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extensions ['colcon_meta']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extension 'colcon_meta'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extensions ['ros']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extension 'ros'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extensions ['cmake', 'python']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extension 'cmake'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extension 'python'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extensions ['python_setup_py']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/a_cen) by extension 'python_setup_py'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extensions ['ignore', 'ignore_ament_install']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extension 'ignore'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extension 'ignore_ament_install'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extensions ['colcon_pkg']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extension 'colcon_pkg'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extensions ['colcon_meta']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extension 'colcon_meta'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extensions ['ros']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extension 'ros'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extensions ['cmake', 'python']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extension 'cmake'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extension 'python'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extensions ['python_setup_py']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/att_lag) by extension 'python_setup_py'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extensions ['ignore', 'ignore_ament_install']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extension 'ignore'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extension 'ignore_ament_install'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extensions ['colcon_pkg']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extension 'colcon_pkg'
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extensions ['colcon_meta']
+[0.173s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extension 'colcon_meta'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extensions ['ros']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extension 'ros'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extensions ['cmake', 'python']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extension 'cmake'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extension 'python'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extensions ['python_setup_py']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento) by extension 'python_setup_py'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extensions ['ignore', 'ignore_ament_install']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extension 'ignore'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extension 'ignore_ament_install'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extensions ['colcon_pkg']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extension 'colcon_pkg'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extensions ['colcon_meta']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extension 'colcon_meta'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extensions ['ros']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extension 'ros'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extensions ['cmake', 'python']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extension 'cmake'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extension 'python'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extensions ['python_setup_py']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/baseline) by extension 'python_setup_py'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extensions ['ignore', 'ignore_ament_install']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extension 'ignore'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extension 'ignore_ament_install'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extensions ['colcon_pkg']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extension 'colcon_pkg'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extensions ['colcon_meta']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extension 'colcon_meta'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extensions ['ros']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extension 'ros'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extensions ['cmake', 'python']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extension 'cmake'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extension 'python'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extensions ['python_setup_py']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz) by extension 'python_setup_py'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extensions ['ignore', 'ignore_ament_install']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extension 'ignore'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extension 'ignore_ament_install'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extensions ['colcon_pkg']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extension 'colcon_pkg'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extensions ['colcon_meta']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extension 'colcon_meta'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extensions ['ros']
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extension 'ros'
+[0.174s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extensions ['cmake', 'python']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extension 'cmake'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extension 'python'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extensions ['python_setup_py']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_agg) by extension 'python_setup_py'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extensions ['ignore', 'ignore_ament_install']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extension 'ignore'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extension 'ignore_ament_install'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extensions ['colcon_pkg']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extension 'colcon_pkg'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extensions ['colcon_meta']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extension 'colcon_meta'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extensions ['ros']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extension 'ros'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extensions ['cmake', 'python']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extension 'cmake'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extension 'python'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extensions ['python_setup_py']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/hrz/hrz_cons) by extension 'python_setup_py'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extensions ['ignore', 'ignore_ament_install']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extension 'ignore'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extension 'ignore_ament_install'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extensions ['colcon_pkg']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extension 'colcon_pkg'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extensions ['colcon_meta']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extension 'colcon_meta'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extensions ['ros']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extension 'ros'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extensions ['cmake', 'python']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extension 'cmake'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extension 'python'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extensions ['python_setup_py']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert) by extension 'python_setup_py'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extensions ['ignore', 'ignore_ament_install']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extension 'ignore'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extension 'ignore_ament_install'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extensions ['colcon_pkg']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extension 'colcon_pkg'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extensions ['colcon_meta']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extension 'colcon_meta'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extensions ['ros']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extension 'ros'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extensions ['cmake', 'python']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extension 'cmake'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extension 'python'
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extensions ['python_setup_py']
+[0.175s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_agg) by extension 'python_setup_py'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extensions ['ignore', 'ignore_ament_install']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extension 'ignore'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extension 'ignore_ament_install'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extensions ['colcon_pkg']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extension 'colcon_pkg'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extensions ['colcon_meta']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extension 'colcon_meta'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extensions ['ros']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extension 'ros'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extensions ['cmake', 'python']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extension 'cmake'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extension 'python'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extensions ['python_setup_py']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/bas_agg_cons_movimento/vert/vert_cons) by extension 'python_setup_py'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extensions ['ignore', 'ignore_ament_install']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extension 'ignore'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extension 'ignore_ament_install'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extensions ['colcon_pkg']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extension 'colcon_pkg'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extensions ['colcon_meta']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extension 'colcon_meta'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extensions ['ros']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extension 'ros'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extensions ['cmake', 'python']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extension 'cmake'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extension 'python'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extensions ['python_setup_py']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/circle) by extension 'python_setup_py'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extensions ['ignore', 'ignore_ament_install']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extension 'ignore'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extension 'ignore_ament_install'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extensions ['colcon_pkg']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extension 'colcon_pkg'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extensions ['colcon_meta']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extension 'colcon_meta'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extensions ['ros']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extension 'ros'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extensions ['cmake', 'python']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extension 'cmake'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extension 'python'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extensions ['python_setup_py']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static) by extension 'python_setup_py'
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extensions ['ignore', 'ignore_ament_install']
+[0.176s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extension 'ignore'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extension 'ignore_ament_install'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extensions ['colcon_pkg']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extension 'colcon_pkg'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extensions ['colcon_meta']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extension 'colcon_meta'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extensions ['ros']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extension 'ros'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extensions ['cmake', 'python']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extension 'cmake'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extension 'python'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extensions ['python_setup_py']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1) by extension 'python_setup_py'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extensions ['ignore', 'ignore_ament_install']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extension 'ignore'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extension 'ignore_ament_install'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extensions ['colcon_pkg']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extension 'colcon_pkg'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extensions ['colcon_meta']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extension 'colcon_meta'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extensions ['ros']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extension 'ros'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extensions ['cmake', 'python']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extension 'cmake'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extension 'python'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extensions ['python_setup_py']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/aggressive) by extension 'python_setup_py'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extensions ['ignore', 'ignore_ament_install']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extension 'ignore'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extension 'ignore_ament_install'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extensions ['colcon_pkg']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extension 'colcon_pkg'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extensions ['colcon_meta']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extension 'colcon_meta'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extensions ['ros']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extension 'ros'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extensions ['cmake', 'python']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extension 'cmake'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extension 'python'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extensions ['python_setup_py']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_1/conservative) by extension 'python_setup_py'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extensions ['ignore', 'ignore_ament_install']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extension 'ignore'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extension 'ignore_ament_install'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extensions ['colcon_pkg']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extension 'colcon_pkg'
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extensions ['colcon_meta']
+[0.177s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extension 'colcon_meta'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extensions ['ros']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extension 'ros'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extensions ['cmake', 'python']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extension 'cmake'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extension 'python'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extensions ['python_setup_py']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2) by extension 'python_setup_py'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extensions ['ignore', 'ignore_ament_install']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extension 'ignore'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extension 'ignore_ament_install'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extensions ['colcon_pkg']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extension 'colcon_pkg'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extensions ['colcon_meta']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extension 'colcon_meta'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extensions ['ros']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extension 'ros'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extensions ['cmake', 'python']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extension 'cmake'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extension 'python'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extensions ['python_setup_py']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/agg) by extension 'python_setup_py'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extensions ['ignore', 'ignore_ament_install']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extension 'ignore'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extension 'ignore_ament_install'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extensions ['colcon_pkg']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extension 'colcon_pkg'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extensions ['colcon_meta']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extension 'colcon_meta'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extensions ['ros']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extension 'ros'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extensions ['cmake', 'python']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extension 'cmake'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extension 'python'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extensions ['python_setup_py']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/hrz_agg_cons_static/alpha_2/cons) by extension 'python_setup_py'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extensions ['ignore', 'ignore_ament_install']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extension 'ignore'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extension 'ignore_ament_install'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extensions ['colcon_pkg']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extension 'colcon_pkg'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extensions ['colcon_meta']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extension 'colcon_meta'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extensions ['ros']
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extension 'ros'
+[0.178s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extensions ['cmake', 'python']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extension 'cmake'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extension 'python'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extensions ['python_setup_py']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free) by extension 'python_setup_py'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extensions ['ignore', 'ignore_ament_install']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extension 'ignore'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extension 'ignore_ament_install'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extensions ['colcon_pkg']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extension 'colcon_pkg'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extensions ['colcon_meta']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extension 'colcon_meta'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extensions ['ros']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extension 'ros'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extensions ['cmake', 'python']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extension 'cmake'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extension 'python'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extensions ['python_setup_py']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/orizz) by extension 'python_setup_py'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extensions ['ignore', 'ignore_ament_install']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extension 'ignore'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extension 'ignore_ament_install'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extensions ['colcon_pkg']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extension 'colcon_pkg'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extensions ['colcon_meta']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extension 'colcon_meta'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extensions ['ros']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extension 'ros'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extensions ['cmake', 'python']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extension 'cmake'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extension 'python'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extensions ['python_setup_py']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/offset-free/vert) by extension 'python_setup_py'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extensions ['ignore', 'ignore_ament_install']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extension 'ignore'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extension 'ignore_ament_install'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extensions ['colcon_pkg']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extension 'colcon_pkg'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extensions ['colcon_meta']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extension 'colcon_meta'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extensions ['ros']
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extension 'ros'
+[0.179s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extensions ['cmake', 'python']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extension 'cmake'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extension 'python'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extensions ['python_setup_py']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(last_run_plots/slack_test) by extension 'python_setup_py'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ignore', 'ignore_ament_install']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore_ament_install'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_pkg']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_pkg'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_meta']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_meta'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ros']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ros'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['cmake', 'python']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'cmake'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['python_setup_py']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python_setup_py'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src/drone_landing) by extensions ['ignore', 'ignore_ament_install']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src/drone_landing) by extension 'ignore'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src/drone_landing) by extension 'ignore_ament_install'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src/drone_landing) by extensions ['colcon_pkg']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src/drone_landing) by extension 'colcon_pkg'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src/drone_landing) by extensions ['colcon_meta']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src/drone_landing) by extension 'colcon_meta'
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src/drone_landing) by extensions ['ros']
+[0.180s] Level 1:colcon.colcon_core.package_identification:_identify(src/drone_landing) by extension 'ros'
+[0.182s] DEBUG:colcon.colcon_core.package_identification:Package 'src/drone_landing' with type 'ros.ament_python' and name 'drone_landing'
+[0.182s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.182s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.182s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.182s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.182s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.200s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[0.200s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[0.201s] WARNING:colcon.colcon_ros.prefix_path.ament:The path '/home/lab/ros2_ws/install/drone_landing' in the environment variable AMENT_PREFIX_PATH doesn't exist
+[0.201s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 0 installed packages in /home/lab/ros2_ws/install
+[0.201s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 10 installed packages in /home/lab/Shaumik/SingleAgentGoal/ros2_ws/install
+[0.202s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 380 installed packages in /opt/ros/humble
+[0.203s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[0.229s] Level 5:colcon.colcon_core.verb:set package 'drone_landing' build argument 'cmake_args' from command line to 'None'
+[0.229s] Level 5:colcon.colcon_core.verb:set package 'drone_landing' build argument 'cmake_target' from command line to 'None'
+[0.229s] Level 5:colcon.colcon_core.verb:set package 'drone_landing' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.229s] Level 5:colcon.colcon_core.verb:set package 'drone_landing' build argument 'cmake_clean_cache' from command line to 'False'
+[0.229s] Level 5:colcon.colcon_core.verb:set package 'drone_landing' build argument 'cmake_clean_first' from command line to 'False'
+[0.229s] Level 5:colcon.colcon_core.verb:set package 'drone_landing' build argument 'cmake_force_configure' from command line to 'False'
+[0.229s] Level 5:colcon.colcon_core.verb:set package 'drone_landing' build argument 'ament_cmake_args' from command line to 'None'
+[0.229s] Level 5:colcon.colcon_core.verb:set package 'drone_landing' build argument 'catkin_cmake_args' from command line to 'None'
+[0.229s] Level 5:colcon.colcon_core.verb:set package 'drone_landing' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.229s] DEBUG:colcon.colcon_core.verb:Building package 'drone_landing' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/lab/ros2_ws/build/drone_landing', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/lab/ros2_ws/install/drone_landing', 'merge_install': False, 'path': '/home/lab/ros2_ws/src/drone_landing', 'symlink_install': False, 'test_result_base': None}
+[0.229s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.230s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.230s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/home/lab/ros2_ws/src/drone_landing' with build type 'ament_python'
+[0.230s] Level 1:colcon.colcon_core.shell:create_environment_hook('drone_landing', 'ament_prefix_path')
+[0.231s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.231s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/hook/ament_prefix_path.ps1'
+[0.232s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/hook/ament_prefix_path.dsv'
+[0.232s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/hook/ament_prefix_path.sh'
+[0.232s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.232s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.383s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/home/lab/ros2_ws/src/drone_landing'
+[0.383s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.383s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.586s] DEBUG:colcon.colcon_core.task.python.build:Available setuptools commands: symlink_data, bdist_dumb, build_clib, bdist_egg, install, saveopts, test, upload_docs, compile_catalog, sdist, dist_info, bdist_rpm, install_egg_info, bdist_wheel, update_catalog, build, alias, upload, build_ext, egg_info, clean, init_catalog, register, develop, install_lib, install_scripts, bdist, build_py, build_scripts, install_headers, extract_messages, check, setopt, rotate, easy_install, install_data
+[0.589s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/lab/ros2_ws/src/drone_landing': PYTHONPATH=/home/lab/ros2_ws/build/drone_landing/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/drone_landing build --build-base /home/lab/ros2_ws/build/drone_landing/build install --record /home/lab/ros2_ws/build/drone_landing/install.log --install-scripts $base/lib/drone_landing --single-version-externally-managed install_data
+[0.818s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/lab/ros2_ws/src/drone_landing' returned '0': PYTHONPATH=/home/lab/ros2_ws/build/drone_landing/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/drone_landing build --build-base /home/lab/ros2_ws/build/drone_landing/build install --record /home/lab/ros2_ws/build/drone_landing/install.log --install-scripts $base/lib/drone_landing --single-version-externally-managed install_data
+[0.820s] Level 1:colcon.colcon_core.environment:checking '/home/lab/ros2_ws/install/drone_landing' for CMake module files
+[0.821s] Level 1:colcon.colcon_core.environment:checking '/home/lab/ros2_ws/install/drone_landing' for CMake config files
+[0.821s] Level 1:colcon.colcon_core.environment:checking '/home/lab/ros2_ws/install/drone_landing/lib'
+[0.821s] Level 1:colcon.colcon_core.environment:checking '/home/lab/ros2_ws/install/drone_landing/bin'
+[0.822s] Level 1:colcon.colcon_core.environment:checking '/home/lab/ros2_ws/install/drone_landing/lib/pkgconfig/drone_landing.pc'
+[0.822s] Level 1:colcon.colcon_core.environment:checking '/home/lab/ros2_ws/install/drone_landing/lib/python3.10/site-packages'
+[0.822s] Level 1:colcon.colcon_core.shell:create_environment_hook('drone_landing', 'pythonpath')
+[0.822s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/hook/pythonpath.ps1'
+[0.822s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/hook/pythonpath.dsv'
+[0.823s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/hook/pythonpath.sh'
+[0.823s] Level 1:colcon.colcon_core.environment:checking '/home/lab/ros2_ws/install/drone_landing/bin'
+[0.823s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(drone_landing)
+[0.824s] INFO:colcon.colcon_core.shell:Creating package script '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/package.ps1'
+[0.825s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/package.dsv'
+[0.825s] INFO:colcon.colcon_core.shell:Creating package script '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/package.sh'
+[0.826s] INFO:colcon.colcon_core.shell:Creating package script '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/package.bash'
+[0.826s] INFO:colcon.colcon_core.shell:Creating package script '/home/lab/ros2_ws/install/drone_landing/share/drone_landing/package.zsh'
+[0.827s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/lab/ros2_ws/install/drone_landing/share/colcon-core/packages/drone_landing)
+[0.827s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[0.827s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[0.828s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[0.828s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[0.832s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[0.832s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[0.832s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[0.843s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[0.844s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/lab/ros2_ws/install/local_setup.ps1'
+[0.845s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/lab/ros2_ws/install/_local_setup_util_ps1.py'
+[0.846s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/lab/ros2_ws/install/setup.ps1'
+[0.847s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/lab/ros2_ws/install/local_setup.sh'
+[0.848s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/lab/ros2_ws/install/_local_setup_util_sh.py'
+[0.848s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/lab/ros2_ws/install/setup.sh'
+[0.849s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/lab/ros2_ws/install/local_setup.bash'
+[0.850s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/lab/ros2_ws/install/setup.bash'
+[0.850s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/lab/ros2_ws/install/local_setup.zsh'
+[0.851s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/lab/ros2_ws/install/setup.zsh'

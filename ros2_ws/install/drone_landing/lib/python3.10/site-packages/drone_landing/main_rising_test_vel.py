@@ -417,6 +417,52 @@ PLATFORM_YAW_MOVE_LOG   = 5.0    # [deg] variazione dello yaw grezzo che fa
                                  # stampare una riga: serve a vedere a terra se
                                  # l'asset segue davvero la rotazione fisica
 
+# --- ROTAZIONE DEL RIFERIMENTO (tgt_omega) -----------------------------------
+# L'MPC estrapola il bersaglio sull'orizzonte (N*mpc_dt = 1.6 s). Con
+# tgt_omega = 0 lo fa in RETTA: su una traiettoria curva il bersaglio predetto
+# esce dall'arco verso l'ESTERNO di circa v^2 T^2 / (2R), che a 0.35 m/s, T =
+# 1.6 s e R = 3.5 m vale 4.5 cm. E' l'errore radiale misurato nei voli del
+# 26/10 mattina (115628 +5.3, 115847 +2.3, 120042 +7.1 cm, tutti verso fuori).
+# Passando tgt_omega il controllore estrapola sull'ARCO e quel termine sparisce.
+#
+# PLAT_TRAJ_MODE: che traiettoria fa la piattaforma in questo volo.
+#   "circle" -> omega stimato e passato al controllore
+#   "line"   -> omega forzato a ZERO (su una retta non c'e' niente da ruotare,
+#               e una stima rumorosa farebbe solo danno)
+# Questo main e' solo per i casi in MOVIMENTO: non esiste il caso statico.
+PLAT_TRAJ_MODE      = "circle"   # "circle" | "line"
+
+TGT_OMEGA_ENABLED   = True   # False -> si vola come prima (riferimento in retta)
+TGT_OMEGA_WIN       = 0.35   # [s] finestra della regressione sullo yaw. NON alzarla
+                             # oltre quello che il buffer puo' dare: _plat_buf e'
+                             # tappato a PLATFORM_AVG_N pose e il callback del
+                             # mocap gira piu' veloce del loop, quindi 50 campioni
+                             # coprono MENO di mezzo secondo. Per filtrare di piu'
+                             # si alza TGT_OMEGA_TAU, non la finestra.
+TGT_OMEGA_SPAN_MIN  = 0.15   # [s] span minimo ASSOLUTO della finestra. Prima qui
+                             # c'era 0.5*WIN: alzando WIN la condizione diventava
+                             # insoddisfacibile e lo stimatore restava incantato
+                             # sullo zero senza dirlo (voli 174512/174717/174912).
+TGT_OMEGA_MIN_N     = 7      # campioni minimi nella finestra
+TGT_OMEGA_TAU       = 3.5    # [s] costante del passa-basso. lam = span/TAU, quindi
+                             # con TAU <= span viene lam = 1 e il filtro NON filtra:
+                             # era il caso di TAU = 0.25 (lam saturato a 1.0), da cui
+                             # i 0.05 rad/s di rumore del volo 173931. A 3.5 viene
+                             # lam = 0.1, cioe' una costante di tempo di ~0.2 s.
+TGT_OMEGA_MAX       = 0.40   # [rad/s] TETTO. A 0.35 m/s corrisponde a un raggio
+                             # di riferimento di 0.9 m: e' gia' il quadruplo
+                             # dell'omega atteso sui cerchi veri (R = 3.5-4.6 m
+                             # -> 0.075-0.10 rad/s), quindi lascia margine ma
+                             # rende innocua una stima sballata.
+TGT_OMEGA_VMIN      = 0.05   # [m/s] sotto questa velocita' di piattaforma
+                             # l'omega non e' osservabile: si forza a zero
+TGT_OMEGA_JUMP      = 0.17   # [rad] ~10 deg: scarto massimo di un campione di
+                             # yaw dalla mediana della finestra. Oltre, il
+                             # campione e' una riacquisizione del corpo rigido
+                             # e va buttato: la posa ha gia' la sua guardia
+                             # (PLATFORM_JUMP_MAX), lo YAW no.
+TGT_OMEGA_STATES    = ("hold", "landing")   # dove la rotazione e' attiva
+
 DT = 0.02
 G = 9.81
 
@@ -843,7 +889,7 @@ def save_and_plot(rows, ctrl=None):
             "z_ground", "ge_ground", "hv0", "eps_imp", "eps_imp0", "yaw_drone", "yaw_err", "yaw_rate",
             "yaw_plat", "yaw_plat_raw", "pose_age",
             "plat_x_raw", "plat_y_raw", "plat_z_raw", "plat_skip",
-            "plat_age", "e_x", "e_y"]
+            "plat_age", "e_x", "e_y", "tgt_omega"]
     # --- configurazione del volo, salvata insieme ai dati ---------------------
     # Due copie, per motivi diversi:
     #  - un file di testo accanto al CSV, leggibile e greppabile ("quale volo
@@ -1794,6 +1840,8 @@ class LandingNode(Node):
 
         # --- piattaforma (target di atterraggio) ---
         self._plat_buf = []                 # ultime pose piattaforma
+        self._tgt_omega = 0.0               # [rad/s] rotazione del riferimento
+        self._tgt_omega_warned = False      # avviso 'finestra corta' gia' stampato
         self.plat_xyz = None                # posa fissata come target
         self._plat_raw = None               # ultima posa piattaforma GREZZA
         self._plat_change_t = None          # istante dell'ultima posa plat DIVERSA
@@ -2149,6 +2197,79 @@ class LandingNode(Node):
         self._plat_vel[0:2] += lam * (raw - self._plat_vel[0:2])
         self._plat_vel_t = now
         return np.clip(self._plat_vel, -PLATFORM_VEL_MAX, PLATFORM_VEL_MAX)
+
+    def _platform_omega(self, now=None):
+        """Velocita' di rotazione della piattaforma [rad/s], da passare all'MPC.
+
+        Pendenza dello yaw srotolato sulla finestra TGT_OMEGA_WIN, stimata con
+        Theil-Sen (mediana delle pendenze a coppie) invece che ai minimi
+        quadrati: su ~17 campioni un solo outlier di 10 gradi al bordo della
+        finestra sposterebbe la pendenza ai minimi quadrati di 0.17 rad/s su un
+        valore vero di 0.10, cioe' la raddoppierebbe. La mediana a coppie regge
+        fino a meta' campioni sporchi.
+
+        Zero (nessuna rotazione) quando: la modalita' non e' "circle", la
+        stima e' disabilitata, la posa e' vecchia, i campioni sono pochi o la
+        piattaforma e' sostanzialmente ferma. Il valore e' poi passato al
+        passa-basso TGT_OMEGA_TAU e saturato a +-TGT_OMEGA_MAX.
+        """
+        if not (TGT_OMEGA_ENABLED and PLAT_TRAJ_MODE == "circle"):
+            self._tgt_omega = 0.0
+            return 0.0
+        if not (PLATFORM_YAW_ENABLED and PLATFORM_TRACK and USE_PLATFORM):
+            self._tgt_omega = 0.0
+            return 0.0
+        now = time.perf_counter() if now is None else now
+        if self._plat_t is None or now - self._plat_t > PLATFORM_TRACK_MAXAGE:
+            self._tgt_omega = 0.0           # posa vecchia: nessuna rotazione
+            return 0.0
+        # la rotazione non e' osservabile se la piattaforma e' ferma
+        if float(np.hypot(self._plat_vel[0], self._plat_vel[1])) < TGT_OMEGA_VMIN:
+            self._tgt_omega = 0.0
+            return 0.0
+
+        B = [b for b in self._plat_buf if len(b) >= 5 and now - b[4] <= TGT_OMEGA_WIN]
+        if len(B) < TGT_OMEGA_MIN_N:
+            return float(self._tgt_omega)
+        t = np.array([b[4] for b in B], dtype=float)
+        y = np.unwrap(np.array([b[3] for b in B], dtype=float))
+        span = float(t[-1] - t[0])
+        if span < TGT_OMEGA_SPAN_MIN:
+            # span assoluto, non legato a WIN: se il buffer e' corto si usa
+            # quello che c'e' invece di bloccarsi. E se succede lo si dice.
+            if not self._tgt_omega_warned:
+                self._tgt_omega_warned = True
+                print("[tgt_omega] finestra troppo corta: span %.3f s su %d pose "
+                      "(serve %.2f s). Rotazione del riferimento NON attiva."
+                      % (span, len(B), TGT_OMEGA_SPAN_MIN), flush=True)
+            return float(self._tgt_omega)
+
+        # guardia sullo yaw: via i campioni lontani dalla mediana della finestra
+        # (riacquisizioni del corpo rigido). La posa ha PLATFORM_JUMP_MAX, lo
+        # yaw non ha nessuna guardia a monte.
+        res = y - np.median(y)
+        keep = np.abs(res - np.median(res)) <= TGT_OMEGA_JUMP
+        if int(keep.sum()) < TGT_OMEGA_MIN_N:
+            return float(self._tgt_omega)
+        t, y = t[keep], y[keep]
+
+        # Theil-Sen: mediana delle pendenze a coppie
+        dt_ = t[None, :] - t[:, None]
+        dy_ = y[None, :] - y[:, None]
+        iu = np.triu_indices(len(t), k=1)
+        dt_, dy_ = dt_[iu], dy_[iu]
+        good = np.abs(dt_) > 1e-3
+        if not np.any(good):
+            return float(self._tgt_omega)
+        raw = float(np.median(dy_[good] / dt_[good]))
+        if not np.isfinite(raw):
+            return float(self._tgt_omega)
+
+        lam = min(1.0, span / TGT_OMEGA_TAU)
+        self._tgt_omega += lam * (raw - self._tgt_omega)
+        self._tgt_omega = float(np.clip(self._tgt_omega,
+                                        -TGT_OMEGA_MAX, TGT_OMEGA_MAX))
+        return float(self._tgt_omega)
 
     def _track_platform(self, now):
         """Aggiorna il waypoint di landing sulla posa corrente della piattaforma.
@@ -2524,7 +2645,9 @@ class LandingNode(Node):
             # prima del contatto e l'errore letto al touchdown (7.8 cm) era
             # interamente un artefatto: il drone fermo in un fotogramma vecchio
             # mentre il bersaglio continuava a scorrere.
-            e_x=_err[0], e_y=_err[1])
+            e_x=_err[0], e_y=_err[1],
+            # rotazione del riferimento effettivamente passata al controllore
+            tgt_omega=float(getattr(self, "_tgt_omega", 0.0)))
 
     def _append_row(self, pos, vel, state, mode, p_LOS, force, cmd, az, roll, pitch,
                     solve_ms, v_ff, current_target_vel, cmd_ctrl, spool_ceil, wp_landing,
@@ -2774,7 +2897,13 @@ class LandingNode(Node):
             z_ground_ge=(self._ge_ground if self._ge_ground is not None
                          else (FLOOR_Z - GE_ROTOR_DZ)),
             cmd_saturated_prev=self._last_cmd_sat,
-            R_drone=R_d, R_target=R_t)
+            R_drone=R_d, R_target=R_t,
+            # rotazione del riferimento: attiva solo in hold/landing e solo in
+            # modalita' "circle". Fuori da li' vale 0.0, che e' il ramo in cui
+            # il riferimento e' identico bit per bit a quello di prima.
+            tgt_omega=(self._platform_omega()
+                       if (self.state in TGT_OMEGA_STATES and not self._emergency)
+                       else 0.0))
         solve_ms = (time.perf_counter() - t0) * 1000.0
 
         # Nessun tetto qui: la rampa di spunto vive interamente nella fase

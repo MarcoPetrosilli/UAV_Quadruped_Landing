@@ -117,11 +117,15 @@ class HybridController:
 
         # ---- MPC weights ---------------------------------------------------
 
+
         # Baseline 
         self.Q_hrz = np.diag([3.0, 3.0, 4.0, 4.0])
         self.R_hrz = np.diag([7.0, 7.0])
         self.Q_vrt = np.diag([2.0, 1.5])
         self.R_vrt = np.diag([3.0])
+
+
+        # VERTICAL
 
         # Conservative 
         #self.Q_hrz = np.diag([3.0, 3.0, 4.0, 4.0])
@@ -134,6 +138,20 @@ class HybridController:
         #self.R_hrz = np.diag([7.0, 7.0])
         #self.Q_vrt = np.diag([8.0, 0.75])
         #self.R_vrt = np.diag([1.5])
+
+        # HORIZONTAL
+        
+        # Conservative 
+        #self.Q_hrz = np.diag([2.0, 2.0, 5.0, 5.0])
+        #self.R_hrz = np.diag([12.0, 12.0])
+        #self.Q_vrt = np.diag([2.0, 1.5])
+        #self.R_vrt = np.diag([3.0])
+        
+        # Aggressive
+        #self.Q_hrz = np.diag([6.0, 6.0, 3.0, 3.0])
+        #self.R_hrz = np.diag([5.0, 5.0])
+        #self.Q_vrt = np.diag([2.0, 1.5])
+        #self.R_vrt = np.diag([3.0])
         
         # ---- Cone CBF (glideslope) -----------------------------------------
         self.cbf_cone_enabled = True
@@ -259,10 +277,10 @@ class HybridController:
         # Lo slack e' penalizzato molto piu' di quello del cono: la velocita' di
         # impatto e' la specifica fisica, il corridoio e' una preferenza.
         self.imp_enabled = True
-        self.imp_vtd = 0.05          # velocita' di contatto ammessa [m/s]
+        self.imp_vtd = 0.7          # velocita' di contatto ammessa [m/s]
         self.imp_kv = 1.3          # pendenza della barriera [1/s]: con vz di
                                      # crociera 0.5 m/s morde sotto ~32 cm
-        self.imp_gamma = 1.0         # classe-K discreta (come il cono)
+        self.imp_gamma = 0.2         # classe-K discreta (come il cono)
         self.rho_imp = 1e6           # peso dello slack (>> rho_slack del cono)
         self.log_hv0 = float("nan")  # valore della barriera al passo 0 [m/s]
         self.log_eps_imp = float("nan")
@@ -303,9 +321,39 @@ class HybridController:
         self.log_yaw_err = float("nan")
         self.log_yaw_rate = float("nan")
 
+        # ---- bersaglio che CURVA: rotazione del riferimento ------------------
+        # Il riferimento orizzontale estrapola la piattaforma in linea retta su
+        # tutto l'orizzonte: xref_k = wp + v*k*dt, con v costante. Su un arco
+        # quella retta e' la TANGENTE, e si stacca dall'arco di
+        #
+        #     delta = R (1 - cos(v T / R))  ~  v^2 T^2 / (2 R)       [all'esterno]
+        #
+        # a fine orizzonte. Con R = 1.9 m, v = 0.30 m/s e T = 1.6 s sono 6 cm, e
+        # con il costo terminale che pesa dieci volte quello di stadio quel punto
+        # TIRA. Misurato sui tre voli in cerchio del 23/10: al contatto restavano
+        # +3.6 e +3.9 cm di errore radiale verso l'ESTERNO, stesso segno della
+        # previsione e circa il 60% del modulo, che e' quello che ci si aspetta
+        # dato che il costo di stadio tira verso il riferimento a breve termine,
+        # che invece e' giusto.
+        #
+        # L'errore scala come 1/R: stringendo il raggio peggiora. A R = 0.75 m e
+        # 0.30 m/s diventa 15 cm, cioe' piu' del budget di errore laterale.
+        #
+        # tgt_omega e' la velocita' di rotazione del VETTORE VELOCITA' del
+        # bersaglio [rad/s], che per un differenziale coincide con la sua
+        # velocita' di imbardata. Con tgt_omega = 0 (default) il riferimento
+        # resta la retta di sempre, bit per bit: chi non passa l'argomento non
+        # vede nessuna differenza.
+        self.tgt_omega = 0.0
+        self.tgt_omega_max = 1.5     # [rad/s] tetto di sicurezza: una stima
+                                     # sballata curverebbe il riferimento in un
+                                     # cerchio stretto attorno al drone
+        self.log_tgt_omega = 0.0
+        self._tgt_traj = None        # cache per tick: la usano orizzontale E cono
+
         self.z_cut = 1.5
         self.r_base = 0.06
-        self.rho_slack = 1e6        # peso penalita' slack del cono (grande = slack usato solo se necessario)
+        self.rho_slack = 1e5        # peso penalita' slack del cono (grande = slack usato solo se necessario)
 
         # ---- multi-rate decimation -----------------------------------------
         self.control_counter = 0
@@ -569,10 +617,17 @@ class HybridController:
     def compute(self, cur_pos, cur_vel, target_pos, target_yaw=0.0,
                 target_vel=None, a_xy_lim=0.17, final_pos=None, landing=False,
                 ramp_ref_vel=None, z_ground=None, z_ground_ge=None,
-                cmd_saturated_prev=False, R_drone=None, R_target=None):
+                cmd_saturated_prev=False, R_drone=None, R_target=None,
+                tgt_omega=None):
         # R_drone / R_target: matrici di rotazione rispetto al MONDO (3x3).
         # Se mancano, o se lo yaw e' disabilitato, non si ruota niente e il
         # comportamento e' identico a prima del controllo di imbardata.
+        # velocita' di rotazione del bersaglio: se il main non la passa resta
+        # zero e il riferimento e' la retta di sempre (vedi __init__)
+        if tgt_omega is not None and np.isfinite(tgt_omega):
+            self.tgt_omega = float(np.clip(float(tgt_omega),
+                                           -self.tgt_omega_max, self.tgt_omega_max))
+        self.log_tgt_omega = float(self.tgt_omega)
         self.control_counter += 1
         now = time.perf_counter()
         if R_drone is not None and self.yaw_enabled:
@@ -873,6 +928,59 @@ class HybridController:
         in_z = inside(self.H_vz, self.h_vz, np.array([e_pos[2], e_vel[2]]))
         return in_x and in_y and in_z
 
+    def _target_traj(self, wp, target_vel):
+        """Posizione e velocita' del bersaglio sui passi 0..N dell'orizzonte.
+
+        Ritorna (px, py, vx, vy), quattro vettori di lunghezza N+1.
+
+        Con tgt_omega = 0 e' l'estrapolazione rettilinea di sempre:
+
+            p_k = p_0 + v_0 k dt ,   v_k = v_0
+
+        Con tgt_omega != 0 il vettore velocita' RUOTA alla stessa velocita'
+        angolare del bersaglio, quindi il riferimento segue l'ARCO invece della
+        tangente:
+
+            v_k = R(phi_k) v_0
+            p_k = p_0 + S(phi_k) v_0 ,     phi_k = omega k dt
+
+                        1  [ sin phi    -(1 - cos phi) ]
+            S(phi) = ----- [                            ]
+                     omega [ 1 - cos phi     sin phi    ]
+
+        S(phi) -> k dt * I per omega -> 0, quindi la formula DEGENERA DA SOLA
+        nel caso rettilineo: quando la piattaforma smette di curvare non c'e'
+        nessuna discontinuita' da gestire, e il ramo esplicito qui sotto serve
+        solo a evitare la divisione per omega.
+
+        Resta tutto affine nello stato e nell'ingresso: il riferimento e' un
+        PARAMETRO del QP, quindi il problema non cambia natura e i tempi di
+        solve nemmeno.
+        """
+        k = np.arange(self.N + 1, dtype=float)
+        v0 = np.array([float(target_vel[0]), float(target_vel[1])])
+        om = float(self.tgt_omega)
+        if abs(om) < 1e-4:
+            # stesso ORDINE di moltiplicazioni della formula di prima
+            # (v*k)*dt e non v*(k*dt): in virgola mobile non e' associativa, e
+            # cosi' il caso rettilineo resta identico bit per bit
+            px = wp[0] + v0[0] * k * self.mpc_dt
+            py = wp[1] + v0[1] * k * self.mpc_dt
+            vx = np.full(self.N + 1, v0[0])
+            vy = np.full(self.N + 1, v0[1])
+        else:
+            phi = om * k * self.mpc_dt
+            s_, c_ = np.sin(phi), np.cos(phi)
+            S11 = s_ / om
+            S12 = -(1.0 - c_) / om
+            S21 = (1.0 - c_) / om
+            S22 = s_ / om
+            px = wp[0] + S11 * v0[0] + S12 * v0[1]
+            py = wp[1] + S21 * v0[0] + S22 * v0[1]
+            vx = c_ * v0[0] - s_ * v0[1]
+            vy = s_ * v0[0] + c_ * v0[1]
+        return px, py, vx, vy
+
     def _mpc_horizontal(self, cur_x, cur_y, cur_vx, cur_vy, wp, a_xy_lim, target_vel):
         cur = np.array([cur_x, cur_y, cur_vx, cur_vy], dtype=float)
         if self.n_hrz == 6:
@@ -887,11 +995,13 @@ class HybridController:
         self.p_uss.value = np.clip(np.array([dxy[1] / self.g, -dxy[0] / self.g]),
                                    -a_xy_lim, a_xy_lim)
 
-        xref_mat = np.zeros((4, self.N + 1))
-        for k in range(self.N + 1):
-            xref_mat[:, k] = np.array([wp[0] + target_vel[0] * k * self.mpc_dt,
-                                       wp[1] + target_vel[1] * k * self.mpc_dt,
-                                       target_vel[0], target_vel[1]])
+        # traiettoria del bersaglio: retta se tgt_omega = 0, arco altrimenti.
+        # Messa in cache perche' la DEVE usare anche il cono, in _mpc_vertical:
+        # se l'orizzontale inseguisse un arco e il cono misurasse il raggio
+        # richiesto contro una retta, lo slack del cono sarebbe un artefatto.
+        px, py, vx, vy = self._target_traj(wp, target_vel)
+        self._tgt_traj = (px, py, vx, vy)
+        xref_mat = np.vstack([px, py, vx, vy])
         self.p_xref_hrz.value = xref_mat
 
         # The max_iter value was 4000 before
@@ -968,8 +1078,15 @@ class HybridController:
                              + self.imp_kv * (cur_z - self.z_ground))
 
         if use_cone:
-            ex = np.asarray(x_pred) - (wp[0] + target_vel[0] * np.arange(self.N + 1) * self.mpc_dt)
-            ey = np.asarray(y_pred) - (wp[1] + target_vel[1] * np.arange(self.N + 1) * self.mpc_dt)
+            # STESSA traiettoria del bersaglio usata dall'orizzontale (cache
+            # riempita in _mpc_horizontal). Se il solve orizzontale non e'
+            # passato la cache non c'e' e si ricostruisce: costa quattro vettori.
+            if self._tgt_traj is not None:
+                _px, _py = self._tgt_traj[0], self._tgt_traj[1]
+            else:
+                _px, _py, _, _ = self._target_traj(wp, target_vel)
+            ex = np.asarray(x_pred) - _px
+            ey = np.asarray(y_pred) - _py
             r = self.alpha_cone * np.maximum(0, np.sqrt(ex ** 2 + ey ** 2) - self.r_base)
             self.p_r_cone.value = np.minimum(r, self.z_cut)
         else:
