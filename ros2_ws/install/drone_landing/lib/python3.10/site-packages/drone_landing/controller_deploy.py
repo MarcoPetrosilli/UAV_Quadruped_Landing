@@ -157,7 +157,7 @@ class HybridController:
         self.cbf_cone_enabled = True
         #self.alpha_cone = 1.72
 
-        self.alpha_cone = 1.0
+        self.alpha_cone = 2.0
         self.v_max_hrz = 0.9          # limite velocita' orizzontale [m/s] (faccia del politopo imposta nell'MPC)
         # --- DHOCBF grado 2: due coefficienti di classe-K (uno per livello) ---
         # catena  h0 -> h1 -> h2 ,  vincolo su h2 >= 0 (rilassato con slack).
@@ -277,7 +277,7 @@ class HybridController:
         # Lo slack e' penalizzato molto piu' di quello del cono: la velocita' di
         # impatto e' la specifica fisica, il corridoio e' una preferenza.
         self.imp_enabled = True
-        self.imp_vtd = 0.7          # velocita' di contatto ammessa [m/s]
+        self.imp_vtd = 0.05          # velocita' di contatto ammessa [m/s]
         self.imp_kv = 1.3          # pendenza della barriera [1/s]: con vz di
                                      # crociera 0.5 m/s morde sotto ~32 cm
         self.imp_gamma = 0.2         # classe-K discreta (come il cono)

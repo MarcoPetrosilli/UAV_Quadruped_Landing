@@ -14,6 +14,6 @@ drone_landing/controller_deploy_circle.py
 drone_landing/main_alpha_landing.py
 drone_landing/main_rising_test.py
 drone_landing/main_rising_test_backup.py
-drone_landing/main_rising_test_vel.py
+drone_landing/main_rising_test_static.py
 launch/landing.launch.py
 resource/drone_landing

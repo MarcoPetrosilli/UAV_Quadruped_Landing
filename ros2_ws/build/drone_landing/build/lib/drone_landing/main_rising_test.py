@@ -76,10 +76,28 @@ PLATFORM_TOP_DZ  = -0.012  # [m] superficie di appoggio MENO origine del corpo
                            # 0.2053 + 0.035 -> superficie 1.2 cm SOTTO il pivot
 # Offset orizzontale tra pivot della piattaforma e punto in cui deve stare il
 # PIVOT DEL DRONE quando il drone e' centrato, espresso nel frame della
-# piattaforma (ruota con il suo yaw). Misurato il 21/9 appoggiando a mano il
-# drone al centro (con lo stesso yaw che ha in volo, cioe' 0): drone - piattaforma
-# = (+1.62, -1.14) cm nel mondo con yaw piattaforma -90.3 deg.
-PLATFORM_XY_OFFSET = np.array([0.0114, 0.0162])   # [m] nel frame piattaforma
+# piattaforma (ruota con il suo yaw).
+#
+# Misura 21/9, appoggiando a mano il drone al centro della piastra:
+#   drone - piattaforma = (+1.62, -1.14) cm nel mondo, yaw piattaforma -90.3 deg
+#   -> PLATFORM_XY_OFFSET = (+1.14, +1.62) cm        [valore usato fino al 18/10]
+#
+# Misura 18/10, stesso metodo:
+#   drone - piattaforma = (+1.158, -0.574) cm nel mondo, yaw piattaforma +168.845
+#   -> PLATFORM_XY_OFFSET = (-1.247, +0.339) cm      [valore attuale]
+#
+# Le due misure NON coincidono: 2.71 cm di differenza. La seconda e' validata
+# in quota (z drone appoggiato previsto 0.2220, misurato 0.2231: 1.1 mm), quindi
+# i frame sono giusti e non e' un errore di conto. La differenza e' coerente con
+# il bias sistematico misurato a posteriori su 291 atterraggi a piattaforma
+# ferma, che dava una media non nulla dell'errore laterale.
+#
+# ATTENZIONE, da verificare: le due misure sono state prese a yaw piattaforma
+# molto diversi (-90.3 e +168.8 deg). Se l'offset nel frame del corpo fosse
+# davvero costante dovrebbero coincidere. Finche' non si ripete la misura a piu'
+# orientamenti e si verifica che il valore non cambia, questo numero vale per la
+# configurazione del 18/10 e non va trasferito all'indietro sui voli vecchi.
+PLATFORM_XY_OFFSET = np.array([-0.01247, 0.00339])   # [m] nel frame piattaforma
 LAND_CLEARANCE   = 0.0     # [m] target sopra la quota di appoggio. Era 0.015,
                            # eredita' del vecchio Z_LAND = 0.05 sul pavimento.
                            # Con quel valore piu' la soglia di fine landing
@@ -124,6 +142,41 @@ PLATFORM_TRACK       = True
 PLATFORM_TRACK_N     = 15    # campioni per la mediana corrente della posa
 PLATFORM_MIN_NORM    = 1e-3  # [m] posa praticamente nulla = non valida
 PLATFORM_TRACK_MAXAGE = 0.3  # [s] pose piu' vecchie: il target si congela
+
+# ---- freschezza della posa -------------------------------------------------
+# La mediana su PLATFORM_TRACK_N campioni non aggiunge rumore ma aggiunge un
+# RITARDO: per un segnale che avanza in modo monotono la mediana coincide con il
+# campione CENTRALE della finestra, cioe' (N-1)/2 campioni indietro. A 50 Hz con
+# N = 15 sono 0.14 s, che a 0.25 m/s valgono 3.5 cm di waypoint vecchio.
+# Qualunque passa-basso causale avrebbe lo stesso problema: un EMA con costante
+# di tempo tau ritarda una rampa esattamente di tau.
+#
+# Ma questo segnale non ha bisogno di essere filtrato. Il rumore della posa e'
+# sotto il millimetro (deviazione standard misurata del target a piattaforma
+# ferma: 0.01-0.16 mm). L'unico disturbo vero e' il 2-3% di campioni che salta
+# di 2-3 cm - buchi e riacquisizioni del rigid body - e un salto del genere
+# entrerebbe INTERO nel waypoint, perche' _track_platform non limita il delta e
+# sposta in blocco WP[LANDING], WP[HOLD], dynamic_p_start e TARGET_XY.
+#
+# Quella non e' roba da filtro, e' roba da soglia: si prende la posa GREZZA
+# (ritardo zero) e si scarta il campione se si discosta troppo dal precedente.
+# PLATFORM_JUMP_MAX e' il limite sullo spostamento fra due campioni
+# consecutivi. ATTENZIONE: va tenuto LARGO. Misurato sul volo 150911, su 431
+# aggiornamenti distinti della posa, il residuo fra il salto osservato e il moto
+# spiegato dal tempo trascorso non supera mai 12.4 mm: NON ci sono outlier da
+# tagliare. I salti grossi (fino a 26 mm) sono moto legittimo su intervalli di
+# pubblicazione lunghi - lo stream della piattaforma ha buchi fino a 80 ms.
+# Con la soglia a 2 cm il gate scartava moto vero, e siccome uno scarto congela
+# il riferimento il campione dopo sembrava ancora piu' lontano: si auto-agganciava.
+# Sul volo 150911 ha prodotto 5 scarti di fila e poi un gradino di 5.7 cm sul
+# waypoint a 4.7 cm di quota. A 0.15 m resta solo un rivelatore di
+# teletrasporto, per il caso in cui il rigid body venga riacquisito altrove.
+# Dopo PLATFORM_JUMP_N scarti consecutivi la posa viene accettata comunque: se
+# il rigid body e' stato riacquisito davvero altrove, il target deve
+# risincronizzarsi invece di restare congelato per sempre.
+PLATFORM_RAW_POSE   = True   # False = vecchio comportamento (mediana su N)
+PLATFORM_JUMP_MAX   = 0.15   # [m] salto massimo accettato fra due pose
+PLATFORM_JUMP_N     = 2      # scarti consecutivi dopo i quali si riaggancia
 
 # ---- velocita' della piattaforma (feed-forward su target_vel) -----------------
 # Il tracking sposta il waypoint dove la piattaforma SI TROVA, ma all'MPC non
@@ -334,7 +387,7 @@ YAW_TARGET       = 0.0     # [deg] imbardata del target quando la lettura della
 # costo si paga per intero senza nessun beneficio: l'allineamento serve solo
 # al contatto. In hold il drone e' fermo sopra il waypoint, il comando e'
 # quasi nullo, quindi ruotare li' e' gratis e si arriva al landing allineati.
-YAW_ACTIVE_STATES = ("hold", "landing")
+YAW_ACTIVE_STATES = ("nav_to_wp", "hold", "landing")
 
 # ---- imbardata della piattaforma dal mocap -----------------------------------
 # Il frame del corpo rigido della piattaforma in Motive NON e' allineato al
@@ -363,6 +416,52 @@ PLATFORM_YAW_OFFSET     = -1.35  # [deg] misurato il 5/10 (run 142511, dev.std
 PLATFORM_YAW_MOVE_LOG   = 5.0    # [deg] variazione dello yaw grezzo che fa
                                  # stampare una riga: serve a vedere a terra se
                                  # l'asset segue davvero la rotazione fisica
+
+# --- ROTAZIONE DEL RIFERIMENTO (tgt_omega) -----------------------------------
+# L'MPC estrapola il bersaglio sull'orizzonte (N*mpc_dt = 1.6 s). Con
+# tgt_omega = 0 lo fa in RETTA: su una traiettoria curva il bersaglio predetto
+# esce dall'arco verso l'ESTERNO di circa v^2 T^2 / (2R), che a 0.35 m/s, T =
+# 1.6 s e R = 3.5 m vale 4.5 cm. E' l'errore radiale misurato nei voli del
+# 26/10 mattina (115628 +5.3, 115847 +2.3, 120042 +7.1 cm, tutti verso fuori).
+# Passando tgt_omega il controllore estrapola sull'ARCO e quel termine sparisce.
+#
+# PLAT_TRAJ_MODE: che traiettoria fa la piattaforma in questo volo.
+#   "circle" -> omega stimato e passato al controllore
+#   "line"   -> omega forzato a ZERO (su una retta non c'e' niente da ruotare,
+#               e una stima rumorosa farebbe solo danno)
+# Questo main e' solo per i casi in MOVIMENTO: non esiste il caso statico.
+PLAT_TRAJ_MODE      = "line"   # "circle" | "line"
+
+TGT_OMEGA_ENABLED   = True   # False -> si vola come prima (riferimento in retta)
+TGT_OMEGA_WIN       = 0.35   # [s] finestra della regressione sullo yaw. NON alzarla
+                             # oltre quello che il buffer puo' dare: _plat_buf e'
+                             # tappato a PLATFORM_AVG_N pose e il callback del
+                             # mocap gira piu' veloce del loop, quindi 50 campioni
+                             # coprono MENO di mezzo secondo. Per filtrare di piu'
+                             # si alza TGT_OMEGA_TAU, non la finestra.
+TGT_OMEGA_SPAN_MIN  = 0.15   # [s] span minimo ASSOLUTO della finestra. Prima qui
+                             # c'era 0.5*WIN: alzando WIN la condizione diventava
+                             # insoddisfacibile e lo stimatore restava incantato
+                             # sullo zero senza dirlo (voli 174512/174717/174912).
+TGT_OMEGA_MIN_N     = 7      # campioni minimi nella finestra
+TGT_OMEGA_TAU       = 3.5    # [s] costante del passa-basso. lam = span/TAU, quindi
+                             # con TAU <= span viene lam = 1 e il filtro NON filtra:
+                             # era il caso di TAU = 0.25 (lam saturato a 1.0), da cui
+                             # i 0.05 rad/s di rumore del volo 173931. A 3.5 viene
+                             # lam = 0.1, cioe' una costante di tempo di ~0.2 s.
+TGT_OMEGA_MAX       = 0.40   # [rad/s] TETTO. A 0.35 m/s corrisponde a un raggio
+                             # di riferimento di 0.9 m: e' gia' il quadruplo
+                             # dell'omega atteso sui cerchi veri (R = 3.5-4.6 m
+                             # -> 0.075-0.10 rad/s), quindi lascia margine ma
+                             # rende innocua una stima sballata.
+TGT_OMEGA_VMIN      = 0.05   # [m/s] sotto questa velocita' di piattaforma
+                             # l'omega non e' osservabile: si forza a zero
+TGT_OMEGA_JUMP      = 0.17   # [rad] ~10 deg: scarto massimo di un campione di
+                             # yaw dalla mediana della finestra. Oltre, il
+                             # campione e' una riacquisizione del corpo rigido
+                             # e va buttato: la posa ha gia' la sua guardia
+                             # (PLATFORM_JUMP_MAX), lo YAW no.
+TGT_OMEGA_STATES    = ("hold", "landing")   # dove la rotazione e' attiva
 
 DT = 0.02
 G = 9.81
@@ -516,11 +615,78 @@ TARGET_VEL = np.array([0.0, 0.0, 0.0]) # si muove in +y (0.15 m/s; regola tu)
 Z_CRUISE = 1.8
 Z_LAND = 0.05
 Z_HOLD = 1.8
-ALPHA_CONE = 1.0
+ALPHA_CONE = 2.0
 LOS_DELTA = 0.3
 A_XY = 0.17
 R_BASE_CONE = 0.3   
 IDLE, RISING, NAV, HOLD, LANDING = 0, 1, 2, 3, 4
+
+# ---- B2: sequenza di inseguimento con piattaforma mobile ----------------------
+# Il drone sale, va al waypoint di nav e LI' RESTA FERMO finche' la piattaforma
+# non ha preso il distacco di rilascio (arriva da dietro e va in +x), poi passa
+# a hold. In nav_to_wp il feed-forward di velocita' e' nullo
+# (vedi current_target_vel), quindi il drone sta davvero fermo mentre la
+# piattaforma gli passa sotto; si aggancia solo all'ingresso in hold.
+#
+# IL RILASCIO E' SU DISTANZA, NON SU TEMPO. Si aspetta che la piattaforma sia
+# avanti di PLAT_PASS_GAP, che per default vale la distanza della GENERATRICE
+# del cono, (Z_HOLD - Z_LAND)/ALPHA_CONE -- la stessa formula con cui si
+# costruisce il punto di hold nel caso statico. Cosi' il drone comincia la
+# discesa esattamente sul bordo del cono, nello stesso punto geometrico del
+# caso statico, senza doverci volare: ci arriva la piattaforma. L'unica
+# differenza fra il blocco statico e quello mobile resta il moto del target,
+# che e' quello che si vuole isolare.
+# Il criterio su distanza si autocalibra con alpha_cone (1.57 m a 1.0, 0.79 m a
+# 2.0) e non va ritarato cambiando la velocita' della piattaforma.
+PLAT_CHASE_ENABLED = True
+PLAT_PASS_GAP      = None   # [m] distacco di rilascio; None = generatrice del
+                            #     cono, calcolata a runtime (Z_LAND viene letto
+                            #     dalla piattaforma, quindi non e' nota qui)
+PLAT_PASS_MARGIN   = 0.05   # [m] solo per il log del sorpasso: TARGET_XY[0]-pos[0]
+                            #     sopra questo = la piattaforma ha passato il drone
+                            #     (il target include gia' PLATFORM_XY_OFFSET,
+                            #     quindi e' il punto di appoggio, non il pivot)
+PLAT_PASS_TIMEOUT  = 40.0   # [s] se il distacco non viene raggiunto entro questo
+                            #     tempo dall'ingresso in nav si prosegue lo stesso:
+                            #     meglio un volo da scartare che uno appeso
+# ---- permanenza minima in hold ---------------------------------------------
+# Senza questo l'hold collassa: il gate rilascia quando il distacco raggiunge la
+# generatrice del cono, che e' ESATTAMENTE la distanza a cui viene costruito il
+# punto di hold, quindi il punto cade sul drone e non resta niente da volare.
+# Misurato: 0.02 s di hold (2 campioni) sul volo 150911, con il drone che entra
+# in landing a velocita' relativa +0.31 m/s, cioe' fermo rispetto al mondo
+# mentre la piattaforma scorre, da 1.58 m di quota e 81 cm di errore laterale.
+# Tutto l'inseguimento finisce dentro la discesa.
+# Con la permanenza minima il drone resta a Z_HOLD sopra la piattaforma che
+# scorre, inseguendo il waypoint di hold che trasla con lei. Il feed-forward di
+# velocita' e' gia' attivo in hold, quindi dopo il transitorio il drone si muove
+# alla velocita' della piattaforma: la discesa parte a velocita' relativa nulla,
+# la stessa condizione iniziale del caso statico. E' quello che rende
+# confrontabili il blocco fermo e il blocco in moto.
+# Costo in spazio: la piattaforma avanza di v*PLAT_HOLD_MIN. A 0.31 m/s e 2.5 s
+# sono 0.78 m, che sul volo 150911 sposterebbero il contatto da x=-0.46 a -1.24
+# (i voli del 16/10 atterravano a -1.95 senza problemi di volume mocap).
+#
+# RIBALTATO il 18/10 dopo il volo 153859: la zona dove cadeva il contatto con
+# l'hold lungo (x ~ -1.5) e' scoperta dal mocap. In quel volo la posa del drone
+# si e' congelata per 0.548 s a 3.6 cm di quota, e il watchdog non se n'e'
+# accorto perche' il mocap continuava a PUBBLICARE ripetendo l'ultimo valore.
+# Il contatto cade piu' indietro quanto piu' dura l'hold: a 0.32 m/s ogni
+# secondo di hold sposta il touchdown di 32 cm verso -x. Misurato:
+#   hold 0.02 s (volo 150911) -> contatto a x = -0.46
+#   hold 2.20 s (volo 153859) -> contatto a x = -1.53, congelamento a -1.43
+# Quindi l'hold si tiene CORTO e limitato dall'alto, per far cadere il contatto
+# a x ~ -0.8/-1.0, dove la copertura e' buona.
+# Il prezzo e' che la discesa parte con velocita' relativa non nulla (+0.31 m/s
+# nel volo 150911) e tutto l'inseguimento finisce dentro il landing. E' un
+# compromesso imposto dal volume di misura, non una scelta di controllo.
+PLAT_HOLD_MIN      = 0.0    # [s] permanenza MINIMA. 0 = nessuna attesa
+PLAT_HOLD_MAX      = 0.3    # [s] permanenza MASSIMA: scaduta, il landing parte
+                            #     comunque, senza aspettare il gate di distanza.
+                            #     Serve a rendere l'hold RIPETIBILE: lasciato
+                            #     libero e' durato 0.02 s in un volo e 2.20 s in
+                            #     un altro, a parita' di configurazione.
+                            #     0 = disattivato (nessun limite superiore)
 
 
 def trapz_profile(tau, L, V, t_acc):
@@ -721,7 +887,9 @@ def save_and_plot(rows, ctrl=None):
             "hover_est", "hover_b50", "hover_kf", "kf_sigma", "kf_used", "b50_n", "hover_vbat",
             "az_mpc", "eps0", "eps_max", "ge_az", "ge_h", "d_hat", "d_x", "d_y",
             "z_ground", "ge_ground", "hv0", "eps_imp", "eps_imp0", "yaw_drone", "yaw_err", "yaw_rate",
-            "yaw_plat", "yaw_plat_raw", "pose_age"]
+            "yaw_plat", "yaw_plat_raw", "pose_age",
+            "plat_x_raw", "plat_y_raw", "plat_z_raw", "plat_skip",
+            "plat_age", "e_x", "e_y", "tgt_omega"]
     # --- configurazione del volo, salvata insieme ai dati ---------------------
     # Due copie, per motivi diversi:
     #  - un file di testo accanto al CSV, leggibile e greppabile ("quale volo
@@ -1028,16 +1196,54 @@ STALL_BAND     = (0.01, 0.08)   # [m] fascia sopra il contatto in cui si misura
                            # corso, sopra 8 cm la discesa e' ancora in frenata.
 
 
+POSE_VALID_AGE = 0.15      # [s] eta' massima di pose_age/plat_age perche' un
+                           # campione valga. In volo sano il massimo misurato e'
+                           # 0.10 s; un congelamento patologico arriva a 0.59.
+
+
 def _touchdown_index(a, state_str):
-    """Indice del campione di contatto: minimo di (z - quota di contatto)
-    all'interno della fase di landing; se la fase non c'e', minimo globale."""
+    """Indice del campione di CONTATTO.
+
+    E' il primo campione in stato "touchdown", cioe' l'istante in cui il
+    rilevatore di contatto della FSM ha scattato. NON e' il minimo di quota:
+    dopo il contatto il drone resta appoggiato mentre la piattaforma continua a
+    scorrere, quindi l'errore letto piu' avanti cresce di qualche centimetro
+    senza che il drone si sia mosso, e non e' un errore di atterraggio.
+    Stessa ragione per cui non si usa l'ultimo campione della registrazione.
+
+    L'indice viene poi arretrato fino al primo campione VALIDO: se al contatto
+    la posa del drone o quella della piattaforma erano congelate, il valore
+    letto li' e' un fotogramma vecchio (volo 153859: posa ferma 0.548 s prima
+    del contatto, errore apparente 7.8 cm contro 2.0 cm reali).
+
+    Fallback per i CSV vecchi senza lo stato touchdown: minimo di quota nella
+    fase di landing, come prima.
+    """
     h = a["z"] - a["z_ground"]
-    land = np.where(state_str == "landing")[0]
-    pool = land if len(land) else np.arange(len(h))
-    seg = h[pool]
-    if not np.isfinite(seg).any():
-        return int(pool[-1])
-    return int(pool[int(np.nanargmin(np.where(np.isfinite(seg), seg, np.inf)))])
+    td = np.where(state_str == "touchdown")[0]
+    if len(td):
+        k = int(td[0])
+    else:
+        land = np.where(state_str == "landing")[0]
+        pool = land if len(land) else np.arange(len(h))
+        seg = h[pool]
+        if not np.isfinite(seg).any():
+            return int(pool[-1])
+        k = int(pool[int(np.nanargmin(np.where(np.isfinite(seg), seg, np.inf)))])
+    # arretramento sul primo campione con pose fresche
+    def _age(name):
+        v = a.get(name)
+        if v is None or len(np.atleast_1d(v)) != len(h):
+            return np.zeros(len(h))
+        return np.nan_to_num(np.asarray(v, dtype=float), nan=0.0)
+    bad = (_age("pose_age") > POSE_VALID_AGE) | (_age("plat_age") > POSE_VALID_AGE)
+    k0 = k
+    while k > 0 and bad[k]:
+        k -= 1
+    if k != k0:
+        print(f"[PLOT] contatto arretrato da {k0} a {k} "
+              f"({a['t'][k0]-a['t'][k]:.3f} s): pose non fresche al touchdown")
+    return k
 
 
 def plot_final_phase(a, state_str, stamp, plt,
@@ -1061,7 +1267,15 @@ def plot_final_phase(a, state_str, stamp, plt,
     s = slice(i0, i1 + 1)
     tt = a["t"][s] - a["t"][i_td]           # 0 = contatto
 
-    e_x = (a["x"] - a["target_x"])[s]; e_y = (a["y"] - a["target_y"])[s]
+    # errore: si usano le colonne e_x/e_y calcolate in volo dalla posa GREZZA
+    # della piattaforma. target_x/target_y si congelano di un tick in touchdown
+    # (_track_platform non gira in quello stato) e a ogni uscita anticipata di
+    # _track_platform, quindi ricostruire l'errore da li' introduce un bias.
+    if "e_x" in a and len(np.atleast_1d(a["e_x"])) == n:
+        e_x = np.asarray(a["e_x"], dtype=float)[s]
+        e_y = np.asarray(a["e_y"], dtype=float)[s]
+    else:
+        e_x = (a["x"] - a["target_x"])[s]; e_y = (a["y"] - a["target_y"])[s]
     e_n = np.hypot(e_x, e_y)
     az_meas = (a["accz"] - 1.0) * G
     ax_est = G * np.tan(a["pitch"]); ay_est = -G * np.tan(a["roll"])
@@ -1241,8 +1455,9 @@ def plot_final_phase(a, state_str, stamp, plt,
     txt = (
         f"finestra: h da {100*h[i0]:.0f} cm a contatto, {tt[-1]-tt[0]:.2f} s\n"
         f"in MPC: {mpc_frac:.0f}% dei campioni\n\n"
-        f"AL CONTATTO\n"
+        f"AL CONTATTO (campione valido)\n"
         f"  errore xy      {100*e_n[i_td-i0]:6.2f} cm\n"
+        f"  e_x, e_y      {100*e_x[i_td-i0]:+6.2f}, {100*e_y[i_td-i0]:+.2f} cm\n"
         f"  quota          {100*h[i_td]:6.2f} cm\n"
         f"  vz 1o contatto {s_imp} m/s{s_cont}\n"
         f"  vz impatto rel.{s_rel} m/s\n"
@@ -1577,7 +1792,16 @@ class LandingNode(Node):
         
         self.V_LAND = 0.5
         self.V_NAV  = 0.3     # velocita' carrot in rising/nav [m/s]
-        self.V_HOLD = 0.3     # velocita' carrot in hold [m/s]
+        self.V_HOLD = 0.6     # velocita' carrot in hold [m/s]. Alzata da 0.3 per
+                              # l'inseguimento della piattaforma mobile: in hold il
+                              # feed-forward e' gia' attivo, quindi questa e' la
+                              # velocita' di chiusura RELATIVA alla piattaforma e
+                              # con 0.3 il drone impiegava troppo a raggiungere il
+                              # punto di hold che scorre. NB: la distanza di
+                              # decelerazione del trapezio vale 0.5*V*RAMP_T, qui
+                              # 0.30 m, cioe' esattamente lo stop_delta dell'hold:
+                              # oltre 0.6 la decelerazione comincia fuori dal
+                              # raggio di transizione (vedi nota su carrot_arrived).
 
         # stato del drone (aggiornato dal callback asincrono del logger) e
         # posizione dal mocap (aggiornata dalla callback _on_pose)
@@ -1616,7 +1840,13 @@ class LandingNode(Node):
 
         # --- piattaforma (target di atterraggio) ---
         self._plat_buf = []                 # ultime pose piattaforma
+        self._tgt_omega = 0.0               # [rad/s] rotazione del riferimento
+        self._tgt_omega_warned = False      # avviso 'finestra corta' gia' stampato
         self.plat_xyz = None                # posa fissata come target
+        self._plat_raw = None               # ultima posa piattaforma GREZZA
+        self._plat_change_t = None          # istante dell'ultima posa plat DIVERSA
+        self._plat_skip = 0                 # scarti consecutivi della soglia
+        self._plat_skip_tot = 0             # scarti totali, per il log
         self._plat_t = None                 # istante dell'ultima posa piattaforma
         self._plat_warn_t = 0.0             # anti-spam dei warning sulle pose
         self._plat_vel = np.zeros(3)        # [m/s] velocita' stimata (filtrata)
@@ -1625,6 +1855,9 @@ class LandingNode(Node):
         self.plat_yaw = float("nan")        # [rad] yaw CORRETTO in uso
         self.plat_yaw_raw = float("nan")    # [rad] yaw GREZZO del mocap
         self._plat_yaw_logged = 0.0         # ultimo grezzo stampato
+        self._plat_pass_t = None            # istante del sorpasso (B2)
+        self._hold_t0 = None                # istante di ingresso in hold (B2)
+        self._nav_arrive_t = None           # istante di arrivo al nav (B2)
         self._rest = None                   # quota del drone appoggiato [m]
         self._land_ground = None            # "suolo" di atterraggio per l'MPC
         self._ge_ground = None              # superficie per il modello di effetto suolo
@@ -1922,6 +2155,14 @@ class LandingNode(Node):
         # il timestamp va in coda: gli indici 0:3 (posizione) e 3 (yaw) usati
         # altrove restano quelli
         self._plat_buf.append((p.x, p.y, p.z, yaw, time.perf_counter()))
+        # copia della posa GREZZA: la usa _track_platform con PLATFORM_RAW_POSE
+        # e finisce comunque nel log, per poter misurare l'errore di
+        # atterraggio contro il dato non elaborato
+        if (self._plat_raw is None
+                or abs(p.x - self._plat_raw[0]) > 1e-12
+                or abs(p.y - self._plat_raw[1]) > 1e-12):
+            self._plat_change_t = time.perf_counter()   # solo per il log
+        self._plat_raw = (p.x, p.y, p.z)
         self._plat_t = time.perf_counter()
         if len(self._plat_buf) > PLATFORM_AVG_N:
             self._plat_buf.pop(0)
@@ -1957,6 +2198,79 @@ class LandingNode(Node):
         self._plat_vel_t = now
         return np.clip(self._plat_vel, -PLATFORM_VEL_MAX, PLATFORM_VEL_MAX)
 
+    def _platform_omega(self, now=None):
+        """Velocita' di rotazione della piattaforma [rad/s], da passare all'MPC.
+
+        Pendenza dello yaw srotolato sulla finestra TGT_OMEGA_WIN, stimata con
+        Theil-Sen (mediana delle pendenze a coppie) invece che ai minimi
+        quadrati: su ~17 campioni un solo outlier di 10 gradi al bordo della
+        finestra sposterebbe la pendenza ai minimi quadrati di 0.17 rad/s su un
+        valore vero di 0.10, cioe' la raddoppierebbe. La mediana a coppie regge
+        fino a meta' campioni sporchi.
+
+        Zero (nessuna rotazione) quando: la modalita' non e' "circle", la
+        stima e' disabilitata, la posa e' vecchia, i campioni sono pochi o la
+        piattaforma e' sostanzialmente ferma. Il valore e' poi passato al
+        passa-basso TGT_OMEGA_TAU e saturato a +-TGT_OMEGA_MAX.
+        """
+        if not (TGT_OMEGA_ENABLED and PLAT_TRAJ_MODE == "circle"):
+            self._tgt_omega = 0.0
+            return 0.0
+        if not (PLATFORM_YAW_ENABLED and PLATFORM_TRACK and USE_PLATFORM):
+            self._tgt_omega = 0.0
+            return 0.0
+        now = time.perf_counter() if now is None else now
+        if self._plat_t is None or now - self._plat_t > PLATFORM_TRACK_MAXAGE:
+            self._tgt_omega = 0.0           # posa vecchia: nessuna rotazione
+            return 0.0
+        # la rotazione non e' osservabile se la piattaforma e' ferma
+        if float(np.hypot(self._plat_vel[0], self._plat_vel[1])) < TGT_OMEGA_VMIN:
+            self._tgt_omega = 0.0
+            return 0.0
+
+        B = [b for b in self._plat_buf if len(b) >= 5 and now - b[4] <= TGT_OMEGA_WIN]
+        if len(B) < TGT_OMEGA_MIN_N:
+            return float(self._tgt_omega)
+        t = np.array([b[4] for b in B], dtype=float)
+        y = np.unwrap(np.array([b[3] for b in B], dtype=float))
+        span = float(t[-1] - t[0])
+        if span < TGT_OMEGA_SPAN_MIN:
+            # span assoluto, non legato a WIN: se il buffer e' corto si usa
+            # quello che c'e' invece di bloccarsi. E se succede lo si dice.
+            if not self._tgt_omega_warned:
+                self._tgt_omega_warned = True
+                print("[tgt_omega] finestra troppo corta: span %.3f s su %d pose "
+                      "(serve %.2f s). Rotazione del riferimento NON attiva."
+                      % (span, len(B), TGT_OMEGA_SPAN_MIN), flush=True)
+            return float(self._tgt_omega)
+
+        # guardia sullo yaw: via i campioni lontani dalla mediana della finestra
+        # (riacquisizioni del corpo rigido). La posa ha PLATFORM_JUMP_MAX, lo
+        # yaw non ha nessuna guardia a monte.
+        res = y - np.median(y)
+        keep = np.abs(res - np.median(res)) <= TGT_OMEGA_JUMP
+        if int(keep.sum()) < TGT_OMEGA_MIN_N:
+            return float(self._tgt_omega)
+        t, y = t[keep], y[keep]
+
+        # Theil-Sen: mediana delle pendenze a coppie
+        dt_ = t[None, :] - t[:, None]
+        dy_ = y[None, :] - y[:, None]
+        iu = np.triu_indices(len(t), k=1)
+        dt_, dy_ = dt_[iu], dy_[iu]
+        good = np.abs(dt_) > 1e-3
+        if not np.any(good):
+            return float(self._tgt_omega)
+        raw = float(np.median(dy_[good] / dt_[good]))
+        if not np.isfinite(raw):
+            return float(self._tgt_omega)
+
+        lam = min(1.0, span / TGT_OMEGA_TAU)
+        self._tgt_omega += lam * (raw - self._tgt_omega)
+        self._tgt_omega = float(np.clip(self._tgt_omega,
+                                        -TGT_OMEGA_MAX, TGT_OMEGA_MAX))
+        return float(self._tgt_omega)
+
     def _track_platform(self, now):
         """Aggiorna il waypoint di landing sulla posa corrente della piattaforma.
 
@@ -1978,14 +2292,38 @@ class LandingNode(Node):
         B = np.array(self._plat_buf[-PLATFORM_TRACK_N:], dtype=float)
         if len(B) < 3:
             return
-        p = np.median(B[:, 0:3], axis=0)
-        if np.linalg.norm(p) < PLATFORM_MIN_NORM:
-            return                                   # posa nulla: topic sporco
+        if PLATFORM_RAW_POSE:
+            # posa grezza, nessun filtro: ritardo zero. L'unica difesa e' la
+            # soglia sul salto (vedi il blocco PLATFORM_JUMP_* in testa).
+            p = np.array(B[-1, 0:3], dtype=float)
+            if np.linalg.norm(p) < PLATFORM_MIN_NORM:
+                return                               # posa nulla: topic sporco
+            prev = self.plat_xyz
+            if prev is not None:
+                salto = float(np.linalg.norm(p[0:2] - np.asarray(prev)[0:2]))
+                if salto > PLATFORM_JUMP_MAX:
+                    self._plat_skip += 1
+                    if self._plat_skip <= PLATFORM_JUMP_N:
+                        self._plat_skip_tot += 1
+                        return                       # campione sballato: scartato
+                    self.get_logger().warn(
+                        f"[PLATFORM] {PLATFORM_JUMP_N} pose scartate di fila "
+                        f"(ultimo salto {100*salto:.1f} cm): riaggancio sulla "
+                        f"posa corrente")
+            self._plat_skip = 0
+        else:
+            p = np.median(B[:, 0:3], axis=0)
+            if np.linalg.norm(p) < PLATFORM_MIN_NORM:
+                return                               # posa nulla: topic sporco
 
         # yaw GREZZO, non corretto: PLATFORM_XY_OFFSET e' un vettore misurato
         # nel frame del corpo rigido come lo legge Motive, quindi va ruotato
         # della lettura cruda. La correzione (plat_yaw_off) serve solo al
         # controllo di imbardata, che inquadra il mondo.
+        # Lo yaw resta mediato anche con PLATFORM_RAW_POSE: serve solo a ruotare
+        # PLATFORM_XY_OFFSET, che e' lungo 2 cm, quindi il suo ritardo non
+        # sposta niente di misurabile (la piattaforma e' risultata ferma entro
+        # 0.4 deg durante il landing) mentre il rumore si', se non filtrato.
         yaw = float(np.arctan2(np.median(np.sin(B[:, 3])), np.median(np.cos(B[:, 3]))))
         c, s_ = math.cos(yaw), math.sin(yaw)
         off_w = np.array([c * PLATFORM_XY_OFFSET[0] - s_ * PLATFORM_XY_OFFSET[1],
@@ -1995,6 +2333,9 @@ class LandingNode(Node):
                            surface + self._rest + LAND_CLEARANCE - LAND_UNDERSHOOT])
 
         # il target E' dove si legge la piattaforma: nessun limite sul delta
+        # QUI. Il controllo sui salti sta a monte, sulla posa (PLATFORM_JUMP_*),
+        # dove si distingue un campione sballato da un movimento vero; su delta
+        # non si potrebbe, perche' delta include anche il moto legittimo.
         delta = wp_new - self.WP[LANDING]
         if float(np.linalg.norm(delta)) < 1e-5:
             return
@@ -2235,6 +2576,15 @@ class LandingNode(Node):
     def _log_extras(self, hover_raw):
         """Colonne diagnostiche comuni a tutte le righe di log."""
         c = self.ctrl
+        _praw = self._plat_raw if self._plat_raw is not None else (float("nan"),) * 3
+        _err = (float("nan"), float("nan"))
+        if (self._plat_raw is not None and self.latest_pose is not None
+                and np.isfinite(self.plat_yaw_raw)):
+            _cy, _sy = math.cos(self.plat_yaw_raw), math.sin(self.plat_yaw_raw)
+            _aim = (_praw[0] + _cy * PLATFORM_XY_OFFSET[0] - _sy * PLATFORM_XY_OFFSET[1],
+                    _praw[1] + _sy * PLATFORM_XY_OFFSET[0] + _cy * PLATFORM_XY_OFFSET[1])
+            _err = (float(self.latest_pose[0]) - _aim[0],
+                    float(self.latest_pose[1]) - _aim[1])
         return dict(
             hover_raw=hover_raw, hover_cmd=HOVER_CMD,
             hover_est=self.hover_est, hover_b50=self.hover_b50,
@@ -2271,7 +2621,33 @@ class LandingNode(Node):
             # precedente. In volo sano sta sotto i 20 ms; se sale, il mocap sta
             # ripetendo l'ultimo valore e si sta volando alla cieca.
             pose_age=(time.perf_counter() - self._pose_change_t
-                      if self._pose_change_t is not None else float("nan")))
+                      if self._pose_change_t is not None else float("nan")),
+            # posa GREZZA della piattaforma, ultimo campione ricevuto, nessun
+            # filtro; e numero totale di campioni scartati dalla soglia. Con
+            # PLATFORM_RAW_POSE, target_x/target_y seguono questa colonna a meno
+            # di PLATFORM_XY_OFFSET, quindi l'errore di atterraggio si legge
+            # direttamente dal log senza correzioni a posteriori.
+            plat_x_raw=_praw[0], plat_y_raw=_praw[1], plat_z_raw=_praw[2],
+            plat_skip=getattr(self, "_plat_skip_tot", 0),
+            # eta' della posa PIATTAFORMA: tempo dall'ultima misura DIVERSA
+            # dalla precedente, stessa semantica di pose_age per il drone.
+            plat_age=(time.perf_counter() - self._plat_change_t
+                      if self._plat_change_t is not None else float("nan")),
+            # ERRORE DI ATTERRAGGIO, calcolato qui e non ricostruito a
+            # posteriori. e_x,e_y = posa drone - punto di mira, dove il punto di
+            # mira e' la posa GREZZA della piattaforma a questo tick piu'
+            # PLATFORM_XY_OFFSET ruotato dello yaw grezzo. Non passa da
+            # target_x/target_y, che si congelano di un tick in touchdown perche'
+            # _track_platform non gira piu' in quello stato, e che in generale
+            # restano fermi su ogni uscita anticipata di _track_platform.
+            # VALIDITA': una riga vale solo se pose_age e plat_age sono piccoli.
+            # Nel volo 153859 la posa del drone e' rimasta congelata 0.548 s
+            # prima del contatto e l'errore letto al touchdown (7.8 cm) era
+            # interamente un artefatto: il drone fermo in un fotogramma vecchio
+            # mentre il bersaglio continuava a scorrere.
+            e_x=_err[0], e_y=_err[1],
+            # rotazione del riferimento effettivamente passata al controllore
+            tgt_omega=float(getattr(self, "_tgt_omega", 0.0)))
 
     def _append_row(self, pos, vel, state, mode, p_LOS, force, cmd, az, roll, pitch,
                     solve_ms, v_ff, current_target_vel, cmd_ctrl, spool_ceil, wp_landing,
@@ -2417,7 +2793,7 @@ class LandingNode(Node):
             self.WP = np.array([
                 [hx, hy, pos[2]],                    # start
                 [hx, hy, Z_CRUISE],                  # rising: sale a 1.0m dove sei
-                [-0.2, 0.0, Z_CRUISE],               # nav: va a (0, -2)
+                [1.8, 0.0, Z_CRUISE],                # nav: punto di attesa
                 [TARGET_XY[0], TARGET_XY[1], Z_HOLD],# hold: sopra il target (poi ricalcolato sul cono)
                 [TARGET_XY[0], TARGET_XY[1], Z_LAND - LAND_UNDERSHOOT],# landing (rif. MPC)
             ])
@@ -2427,7 +2803,7 @@ class LandingNode(Node):
                 self.get_logger().warn(
                     f"[PLATFORM] waypoint di nav a {d_nav:.2f} m dal target: il punto di "
                     f"hold ({(Z_HOLD - Z_LAND) / ALPHA_CONE:.2f} m dal target) cade dietro "
-                    f"al nav, il drone fara' un tratto all'indietro")
+                    f"al nav: verra' tagliato alla posizione del drone")
 
         if self.state == "idle":
             self._shutdown_flight()
@@ -2521,7 +2897,13 @@ class LandingNode(Node):
             z_ground_ge=(self._ge_ground if self._ge_ground is not None
                          else (FLOOR_Z - GE_ROTOR_DZ)),
             cmd_saturated_prev=self._last_cmd_sat,
-            R_drone=R_d, R_target=R_t)
+            R_drone=R_d, R_target=R_t,
+            # rotazione del riferimento: attiva solo in hold/landing e solo in
+            # modalita' "circle". Fuori da li' vale 0.0, che e' il ramo in cui
+            # il riferimento e' identico bit per bit a quello di prima.
+            tgt_omega=(self._platform_omega()
+                       if (self.state in TGT_OMEGA_STATES and not self._emergency)
+                       else 0.0))
         solve_ms = (time.perf_counter() - t0) * 1000.0
 
         # Nessun tetto qui: la rampa di spunto vive interamente nella fase
@@ -2615,20 +2997,116 @@ class LandingNode(Node):
             self.state = "idle"; self.old_wp_id, self.wp_counter = LANDING, IDLE
             return
 
+        # --- B2: permanenza MASSIMA in hold (vedi PLAT_HOLD_MAX) -------------
+        # Forza l'uscita dall'hold senza aspettare il gate di distanza+carota.
+        # Senza questo la durata dell'hold la decide la geometria residua del
+        # segmento e varia da 0.02 a 2.2 s fra un volo e l'altro, spostando il
+        # punto di contatto di oltre 70 cm. Il landing parte da dove il drone si
+        # trova: il vincolo di cono non dipende dal segmento, quindi resta
+        # valutato correttamente comunque.
+        if (self.state == "hold" and PLAT_HOLD_MAX > 0.0
+                and PLAT_CHASE_ENABLED and USE_PLATFORM
+                and self._hold_t0 is not None
+                and time.perf_counter() - self._hold_t0 >= PLAT_HOLD_MAX
+                and not (distance <= self.stop_delta and carrot_arrived)):
+            v_rel = vel[0:2] - np.asarray(current_target_vel)[0:2]
+            self.get_logger().info(
+                f"[HOLD] uscita FORZATA a {PLAT_HOLD_MAX:.2f} s (distanza "
+                f"{distance:.3f} m dal punto di hold), velocita' relativa "
+                f"({v_rel[0]:+.3f}, {v_rel[1]:+.3f}) m/s")
+            self.state = "landing"; self.old_wp_id, self.wp_counter, self.stop_delta = HOLD, LANDING, 0.05
+            self.dynamic_p_start = (self.last_p_LOS.copy() if self.last_p_LOS is not None
+                                     else self.WP[HOLD].copy())
+            self.land_t0 = time.perf_counter()
+            return
+
         if distance <= self.stop_delta and carrot_arrived:
             if self.state == "rising":
                 self.state = "nav_to_wp"; self.old_wp_id, self.wp_counter, self.stop_delta = RISING, NAV, 0.3
             elif self.state == "hold":
+                # --- B2: permanenza minima in hold (vedi PLAT_HOLD_MIN) -------
+                if (PLAT_HOLD_MIN > 0.0 and PLAT_CHASE_ENABLED and USE_PLATFORM
+                        and self._hold_t0 is not None
+                        and time.perf_counter() - self._hold_t0 < PLAT_HOLD_MIN):
+                    return
+                if self._hold_t0 is not None:
+                    v_rel = vel[0:2] - np.asarray(current_target_vel)[0:2]
+                    self.get_logger().info(
+                        f"[HOLD] uscita dopo {time.perf_counter() - self._hold_t0:.2f} s, "
+                        f"velocita' relativa alla piattaforma "
+                        f"({v_rel[0]:+.3f}, {v_rel[1]:+.3f}) m/s "
+                        f"(|v_rel| = {float(np.linalg.norm(v_rel)):.3f})")
                 self.state = "landing"; self.old_wp_id, self.wp_counter, self.stop_delta = HOLD, LANDING, 0.05
                 self.dynamic_p_start = (self.last_p_LOS.copy() if self.last_p_LOS is not None
                                          else self.WP[HOLD].copy())
                 self.land_t0 = time.perf_counter()
             elif self.state == "nav_to_wp":
+                # --- B2: si resta fermi al nav finche' la piattaforma non passa ---
+                if PLAT_CHASE_ENABLED and USE_PLATFORM:
+                    tnow = time.perf_counter()
+                    if self._nav_arrive_t is None:
+                        self._nav_arrive_t = tnow
+                        self.get_logger().info(
+                            "[CHASE] fermo al nav, aspetto che la piattaforma prenda il distacco")
+                    # distacco di rilascio: generatrice del cono, stessa formula
+                    # del punto di hold statico (riga dist_xy_start piu' sotto)
+                    gap_rel = ((Z_HOLD - Z_LAND) / ALPHA_CONE if PLAT_PASS_GAP is None
+                               else float(PLAT_PASS_GAP))
+                    # DISTACCO MISURATO LUNGO IL +x DEL FRAME DEL DRONE, non
+                    # lungo il +x del mondo. Con il controllo di imbardata attivo
+                    # in nav il drone si allinea alla piattaforma, quindi il suo
+                    # asse longitudinale E' la direzione di marcia e il criterio
+                    # vale qualunque verso abbia la corsa. Con il +x del mondo
+                    # (volo 141841) la piattaforma andava in -x e il gap restava
+                    # negativo: rilascio mai.
+                    psi = float(getattr(self.ctrl, "yaw_drone", 0.0))
+                    u_dir = np.array([math.cos(psi), math.sin(psi)])
+                    gap = float(np.dot(TARGET_XY - pos[0:2], u_dir))
+                    if self._plat_pass_t is None and gap >= PLAT_PASS_MARGIN:
+                        self._plat_pass_t = tnow         # solo per diagnostica
+                        self.get_logger().info(
+                            f"[CHASE] sorpasso, gap={gap:+.3f} m (prua {math.degrees(psi):+.1f} deg); "
+                            f"rilascio a {gap_rel:.3f} m")
+                    scaduto = (tnow - self._nav_arrive_t) > PLAT_PASS_TIMEOUT
+                    if gap < gap_rel and not scaduto:
+                        return
+                    if scaduto and gap < gap_rel:
+                        self.get_logger().warn(
+                            f"[CHASE] timeout di {PLAT_PASS_TIMEOUT:.0f} s con gap={gap:+.3f} m "
+                            f"< {gap_rel:.3f} m: proseguo, VOLO DA SCARTARE")
+                    self.get_logger().info(
+                        f"[CHASE] rilascio: gap={gap:+.3f} m (bersaglio {gap_rel:.3f}, "
+                        f"prua {math.degrees(psi):+.1f} deg), "
+                        f"attesa al nav {tnow - self._nav_arrive_t:.2f} s")
                 self.state = "hold"; self.old_wp_id, self.wp_counter, self.stop_delta = NAV, HOLD, 0.3
+                self._hold_t0 = time.perf_counter()
                 dist_xy_start = (Z_HOLD - Z_LAND) / ALPHA_CONE
                 seg_nav = self.WP[HOLD][0:2] - self.WP[NAV][0:2]
                 Lnav = np.linalg.norm(seg_nav)
                 u_nav = seg_nav / Lnav if Lnav > 1e-6 else np.zeros(2)
+                # TAGLIO DEL PUNTO DI HOLD ALLA POSIZIONE ATTUALE DEL DRONE.
+                # L'hold sta sulla generatrice del cono, a (Z_HOLD-Z_LAND)/ALPHA_CONE
+                # dal target: con ALPHA_CONE piccolo quella distanza cresce e il
+                # punto finisce DIETRO al drone, che dovrebbe tornare indietro
+                # uscendo dal volume mocap (perdita di posa, vedi ALPHA_CONE=0.5:
+                # 3.14 m contro i 2.08 m a cui si trova il drone). Si taglia alla
+                # posizione attuale, PROIETTATA sull'asse nav->target: usare la
+                # distanza euclidea sposterebbe l'hold di lato quando il drone e'
+                # fuori asse. max(0.0, ...) copre il caso in cui il drone abbia
+                # gia' superato il target: l'hold finisce sul target e la discesa
+                # e' verticale, invece di finire dall'altra parte.
+                # Quando il taglio morde, il drone parte PIU' DENTRO al cono di
+                # quanto previsto dalla generatrice: il margine al punto di hold
+                # non vale piu' ALPHA_CONE*r_base ma (Z_HOLD-Z_LAND) - ALPHA_CONE*
+                # (d_now - r_base). Va annotato nel registro del volo.
+                d_now = float(np.dot(TARGET_XY - pos[0:2], u_nav))
+                dist_cone = dist_xy_start
+                dist_xy_start = min(dist_xy_start, max(0.0, d_now))
+                if dist_xy_start < dist_cone - 1e-9:
+                    self.get_logger().warn(
+                        f"[HOLD] punto di hold tagliato: generatrice del cono a "
+                        f"{dist_cone:.2f} m dal target, drone a {d_now:.2f} m -> "
+                        f"hold a {dist_xy_start:.2f} m (si parte dentro al cono)")
                 P_start_xy = TARGET_XY - u_nav * dist_xy_start
                 self.WP[HOLD] = np.array([P_start_xy[0], P_start_xy[1], Z_HOLD])
 
