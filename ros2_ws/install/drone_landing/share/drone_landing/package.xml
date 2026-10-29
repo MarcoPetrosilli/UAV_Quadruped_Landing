@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>drone_landing</name>
+  <version>0.1.0</version>
+  <description>
+    Nodo ROS 2 che ospita il controllo di atterraggio autonomo (MPC-PID ibrido con
+    vincolo CBF di glideslope) su Crazyflie/CrazySim via cflib. Il controllo gira
+    invariato: stato da stateEstimate, comando via send_setpoint.
+  </description>
+  <maintainer email="you@example.com">thesis</maintainer>
+  <license>MIT</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <!-- cflib, cvxpy, numpy, scipy, matplotlib sono dipendenze Python (pip),
+       non ROS: installale nel tuo env (vedi README). -->
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
